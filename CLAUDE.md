@@ -46,6 +46,7 @@
 | デイリーログDB | `b16ea51c-cd90-470f-8072-6eb4a6536da3` |
 | 案件管理DB | `e8434c27-61bf-436b-9bf2-601b5ff4d848` |
 | コンテンツDB（Instagram投稿カレンダー） | `942d70a4-e645-464e-a1ab-5176bce10939` |
+| 競合リサーチDB | 初回実行時に自動作成（`COMPETITOR_DB_ID`で指定可） |
 | KPI売上DB | `6b9f8d67-dbed-4f65-9069-67bc0925d711` |
 | クライアント売上DB | `3249fe8c-3a7f-8151-a97a-c40827a55732` |
 | 意思決定ログDB | `88e65c7c-6e3d-4dad-af74-6ad7f2fd2659` |
@@ -60,10 +61,16 @@
 | `SMAREGI_CONTRACT_ID` | スマレジ 契約ID |
 | `AIRREGI_API_KEY` | エアレジ APIキー |
 | `AIRREGI_API_TOKEN` | エアレジ APIトークン |
-| `FREEE_CLIENT_ID` | freee APIクライアントID（Phase 2） |
-| `FREEE_CLIENT_SECRET` | freee APIクライアントシークレット（Phase 2） |
-| `FREEE_REFRESH_TOKEN` | freee APIリフレッシュトークン（Phase 2） |
-| `FREEE_COMPANY_ID` | freee 事業所ID（Phase 2） |
+| `META_APP_ID` | Meta Developer App ID |
+| `META_APP_SECRET` | Meta Developer App Secret |
+| `META_ACCESS_TOKEN` | Meta Graph API 長期アクセストークン |
+| `INSTAGRAM_ACCOUNT_ID_MZ` | M'z cafe Instagram ビジネスアカウントID |
+| `INSTAGRAM_ACCOUNT_ID_NIKI` | Niki★DINER Instagram ビジネスアカウントID |
+| `COMPETITOR_DB_ID` | 競合リサーチDB ID（初回自動作成） |
+| `FREEE_CLIENT_ID` | freee APIクライアントID（Phase 3） |
+| `FREEE_CLIENT_SECRET` | freee APIクライアントシークレット（Phase 3） |
+| `FREEE_REFRESH_TOKEN` | freee APIリフレッシュトークン（Phase 3） |
+| `FREEE_COMPANY_ID` | freee 事業所ID（Phase 3） |
 
 ## 技術スタック
 - Node.js
@@ -119,11 +126,22 @@
 - 制作ツール: Google AI Studio (ImageFX/Veo 3.1), ChatGPT, CapCut, Canva, Premiere Pro, DaVinci Resolve
 - content-agent で SNS企画・ハッシュタグ提案に対応
 
-### Phase 2: freee × Notion 経理自動化
+### Phase 2: Instagram Graph API 連携 ✅
+- `instagram-insights.js` — 投稿ごとのインサイト自動取得→Content DBに書き込み
+- `meta-auth.js` — Meta Graph APIトークン管理（変換・期限チェック・接続確認）
+- 取得メトリクス: リーチ, いいね, コメント, 保存, シェア, 再生数, エンゲージメント率
+- 前提: Meta Developer App + 長期トークン + Facebook連携が必要
+
+### Phase 2.5: 競合リサーチ自動化 ✅
+- `competitor-research.js` — 競合アカウント監視＋ハッシュタグトレンド分析→Notion競合リサーチDBに保存
+- 高崎エリアの同業種アカウント定点観測（フォロワー数・投稿数・ER推定）
+- ハッシュタグ別の人気投稿分析（平均いいね・リール率・頻出タグ）
+
+### Phase 3: freee × Notion 経理自動化
 - 月次売上をfreeeから取得 → KPI売上DBに自動書き込み
 - 月末に案件管理DBの未請求案件を検出してアラート
 
-### Phase 2.5: Instagram Graph API 連携
-- 投稿ごとのインサイト自動取得 → Content DBに書き込み
+### Phase 4: PDCA自動レポート＋次回改善案
+- インサイトデータから最高/最低パフォーマンス投稿を分析
 - KPI漏斗の自動追跡（リーチ→プロフ訪問→フォロー転換→来店）
 - 月次レポート自動生成

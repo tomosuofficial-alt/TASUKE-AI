@@ -17,6 +17,8 @@
 | よいどころ千福 売上取得 | 動作中 | スマレジAPIから当日売上を取得 → Slack通知 |
 | Niki★DINER 売上取得 | 一時停止 | AirレジAPI未確定のため停止中（CSV運用で対応） |
 | Instagram投稿カレンダー | 動作中 | M'z cafe（7本/月）・Niki★DINER（4本/月）のスタッフレディ投稿企画を自動生成 |
+| Instagramインサイト集計 | 利用可能 | 投稿ごとのリーチ・ER等を自動取得→Notionに書き込み（要Meta API設定） |
+| 競合リサーチ | 利用可能 | 競合アカウント監視＋ハッシュタグトレンド分析→Notionに保存（要Meta API設定） |
 | CSV取り込み | 利用可能 | data/ 内のCSVをNotionに取り込む |
 | Notion保存（売上） | 一時停止 | 保存先DBの整理が必要なため停止中 |
 
@@ -35,6 +37,9 @@ TASUKE-AI/
 ├── brief.js              ← 朝次ブリーフ生成スクリプト
 ├── sales-report.js       ← 売上レポート（よいどころ千福・スマレジ専用の安全版）
 ├── content-calendar.js   ← Instagram投稿カレンダー生成
+├── instagram-insights.js ← Instagram投稿インサイト集計
+├── competitor-research.js ← 競合リサーチ（アカウント監視＋ハッシュタグ分析）
+├── meta-auth.js          ← Meta Graph API トークン管理
 ├── import-csv.js         ← CSV → Notion 取り込み
 ├── import-smaregi.js     ← スマレジCSV → Notion 取り込み
 ├── data/                 ← 売上CSVファイル置き場
@@ -75,6 +80,13 @@ ls -la .env
 | スマレジCSVを取り込む | `npm run import:smaregi` |
 | Instagram投稿カレンダー生成 | `npm run content:calendar` |
 | 特定月のカレンダー生成 | `npm run content:calendar -- 2026-04` |
+| Instagramインサイト集計（過去7日） | `npm run instagram:insights` |
+| Instagramインサイト集計（過去30日） | `npm run instagram:insights -- 30` |
+| 競合リサーチ（全実行） | `npm run competitor:research` |
+| ハッシュタグ調査 | `npm run competitor:research -- hashtag #高崎グルメ` |
+| Meta APIトークン管理 | `npm run meta:auth` |
+| トークン有効期限確認 | `npm run meta:auth -- check` |
+| 接続情報確認 | `npm run meta:auth -- me` |
 
 どれも `node ファイル名.js` で直接実行しても同じです。
 

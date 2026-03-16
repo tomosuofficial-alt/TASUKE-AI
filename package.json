@@ -9,6 +9,9 @@
   "import:csv": "node import-csv.js",
   "import:smaregi": "node import-smaregi.js",
   "content:calendar": "node content-calendar.js",
+  "instagram:insights": "node instagram-insights.js",
+  "competitor:research": "node competitor-research.js",
+  "meta:auth": "node meta-auth.js",
   "test": "echo \"Error: no test specified\" && exit 1"
 },
   "keywords": [],
