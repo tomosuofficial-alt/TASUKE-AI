@@ -1,0 +1,24 @@
+{
+  "name": "tasuke-ai",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+  "brief": "node brief.js",
+  "sales": "node sales-report.js",
+  "import:csv": "node import-csv.js",
+  "import:smaregi": "node import-smaregi.js",
+  "content:calendar": "node content-calendar.js",
+  "test": "echo \"Error: no test specified\" && exit 1"
+},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@notionhq/client": "^2.3.0",
+    "csv-parse": "^6.1.0",
+    "dotenv": "^17.3.1",
+    "node-cron": "^4.2.1",
+    "rss-parser": "^3.13.0"
+  }
+}
