@@ -1,0 +1,41 @@
+# 朝の時点でスマレジが未集計だと Notion に行ができない → 昼以降に欠損日だけ再取得（Slack は出さない）。
+# 朝次ブリーフは朝のワークフローのみ。
+
+name: Daily sales afternoon retry
+
+on:
+  schedule:
+    # 毎日 05:00 UTC = 14:00 JST（昼過ぎの再トライ）
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: daily-sales-afternoon-retry
+  cancel-in-progress: false
+
+jobs:
+  sales-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Backfill missing Chinpu rows (last 14 days)
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          SMAREGI_CLIENT_ID: ${{ secrets.SMAREGI_CLIENT_ID }}
+          SMAREGI_CLIENT_SECRET: ${{ secrets.SMAREGI_CLIENT_SECRET }}
+          SMAREGI_CONTRACT_ID: ${{ secrets.SMAREGI_CONTRACT_ID }}
+          SMAREGI_EMPTY_RETRIES: '3'
+          SMAREGI_EMPTY_RETRY_MS: '30000'
+        run: npm run sales:backfill -- 14

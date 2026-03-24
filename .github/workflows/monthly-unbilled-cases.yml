@@ -1,0 +1,36 @@
+# 案件管理DBの未請求・要確認候補を Slack へ（月初）
+name: Monthly unbilled cases alert
+
+on:
+  schedule:
+    # 毎月1日 03:00 UTC = 12:00 JST
+    - cron: '0 3 1 * *'
+  workflow_dispatch:
+
+concurrency:
+  group: monthly-unbilled-cases
+  cancel-in-progress: false
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Unbilled cases → Slack
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          SLACK_DAILY_COMMAND_WEBHOOK_URL: ${{ secrets.SLACK_DAILY_COMMAND_WEBHOOK_URL }}
+          # 任意: CASE_BILLING_STATUS_PROP, CASE_BILLING_UNBILLED_VALUE, CASE_UNBILLED_STATUSES, CASE_UNBILLED_HEURISTIC
+        run: npm run cases:unbilled

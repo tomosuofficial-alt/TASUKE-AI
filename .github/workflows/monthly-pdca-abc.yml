@@ -1,0 +1,51 @@
+# 前月分のカテゴリ別ABC + PDCAひな形を生成し、Artifact で Markdown を残す（#daily-command には送らない）。
+name: Monthly PDCA ABC report
+
+on:
+  schedule:
+    # 毎月1日 02:00 UTC ≈ 同日 11:00 JST（前月締め後の確認向け）
+    - cron: '0 2 1 * *'
+  workflow_dispatch:
+
+concurrency:
+  group: monthly-pdca-abc
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Previous month YYYY-MM
+        id: prev
+        run: |
+          PREV=$(date -u -d "$(date -u +%Y-%m-01) -1 month" +%Y-%m)
+          echo "ym=$PREV" >> "$GITHUB_OUTPUT"
+          echo "Reporting for $PREV"
+
+      - name: ABC report (Markdown only, no Slack)
+        env:
+          SMAREGI_CLIENT_ID: ${{ secrets.SMAREGI_CLIENT_ID }}
+          SMAREGI_CLIENT_SECRET: ${{ secrets.SMAREGI_CLIENT_SECRET }}
+          SMAREGI_CONTRACT_ID: ${{ secrets.SMAREGI_CONTRACT_ID }}
+        run: npm run pdca:abc -- ${{ steps.prev.outputs.ym }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pdca-abc-${{ steps.prev.outputs.ym }}
+          path: |
+            docs/pdca-abc/pdca-abc-*.md
+            docs/pdca-abc/latest.md
+          if-no-files-found: warn
