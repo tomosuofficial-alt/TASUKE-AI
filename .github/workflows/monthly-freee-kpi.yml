@@ -1,0 +1,70 @@
+# 前月の freee 収入 → Notion KPI・売上DB（Slack なし）＋意思決定ログ1行
+name: Monthly freee KPI sync
+
+on:
+  schedule:
+    # 毎月1日 04:30 UTC ≈ 同日 13:30 JST
+    - cron: '30 4 1 * *'
+  workflow_dispatch:
+
+concurrency:
+  group: monthly-freee-kpi
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Write .freee-token.json from secret
+        env:
+          FREEE_TOKEN_JSON: ${{ secrets.FREEE_TOKEN_JSON }}
+        run: |
+          if [ -z "$FREEE_TOKEN_JSON" ]; then
+            echo "✗ Secret FREEE_TOKEN_JSON が未設定です（docs/github-actions-freee-kpi.md 参照）"
+            exit 1
+          fi
+          printf '%s' "$FREEE_TOKEN_JSON" > .freee-token.json
+
+      - name: Refresh freee access token
+        env:
+          FREEE_CLIENT_ID: ${{ secrets.FREEE_CLIENT_ID }}
+          FREEE_CLIENT_SECRET: ${{ secrets.FREEE_CLIENT_SECRET }}
+        run: node freee-auth.js refresh
+
+      - name: Previous month YYYY-MM
+        id: ym
+        run: |
+          PREV=$(date -u -d "$(date -u +%Y-%m-01) -1 month" +%Y-%m)
+          echo "ym=$PREV" >> "$GITHUB_OUTPUT"
+          echo "Target month: $PREV"
+
+      - name: freee → Notion KPI
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          FREEE_CLIENT_ID: ${{ secrets.FREEE_CLIENT_ID }}
+          FREEE_CLIENT_SECRET: ${{ secrets.FREEE_CLIENT_SECRET }}
+          FREEE_COMPANY_ID: ${{ secrets.FREEE_COMPANY_ID }}
+        run: node freee-sales.js --no-slack "${{ steps.ym.outputs.ym }}"
+
+      - name: Decision log (auto sync record)
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: |
+          node decision-log.js "freee月次KPI同期 ${{ steps.ym.outputs.ym }}" \
+            --body "GitHub Actions（monthly-freee-kpi.yml）で freee 収入を KPI・売上DB に反映（Slack なし）" \
+            --ai "CFO/Claude" \
+            --priority 低 \
+            --reason "定例の経理・KPIパイプライン完了記録"

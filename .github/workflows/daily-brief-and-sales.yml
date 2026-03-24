@@ -1,15 +1,17 @@
-# PCオフでも毎朝 7:30 JST: (1)今日の予定＋案件進捗 → (2)スマレジ売上 → (3)ニュース＆ひとこと（各1通ずつ #daily-command）
-# 費用: GitHub 無料アカウントの Actions 分（月数十分程度）
+# PCオフでも毎朝 7:00 JST: (1)今日の予定＋案件進捗 → (2)スマレジ売上→Notionクライアント売上DB → (3)ニュース＆ひとこと
+# よいどころ千福は深夜営業（18:00〜翌4:00）想定。前日 sum_date の日次が揃いやすいのは翌朝7時頃。
+# ② は毎回自動で Notion に書き込む（手動依頼不要・同日は重複スキップ）。
+# 各ステップは独立。失敗しても後続を実行する。Slack へは①②③の各スクリプトが個別に投稿（実行サマリは送らない）。
 #
 # Secrets: NOTION_TOKEN, SLACK_DAILY_COMMAND_WEBHOOK_URL,
 #   SMAREGI_CLIENT_ID, SMAREGI_CLIENT_SECRET, SMAREGI_CONTRACT_ID
 # 任意: NOTION_SCHEDULE_* , NOTION_LINE_INBOX_*（LINE→Notion 取り込みDB）
-name: Daily morning 7:30 (#daily-command)
+name: Daily morning 7:00 (#daily-command)
 
 on:
   schedule:
-    # 毎日 22:30 UTC = 翌日 07:30 JST（サマータイムなし）
-    - cron: '30 22 * * *'
+    # 毎日 22:00 UTC = 翌日 07:00 JST（サマータイムなし）
+    - cron: '0 22 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -19,7 +21,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: read
 
@@ -34,7 +36,8 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: '① Today schedule + client task status → Slack'
+      # ①②③ を順実行（途中失敗でも続行）。Slack は各ステップの本文のみ。
+      - name: '①②③ Morning pipeline'
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           SLACK_DAILY_COMMAND_WEBHOOK_URL: ${{ secrets.SLACK_DAILY_COMMAND_WEBHOOK_URL }}
@@ -47,25 +50,9 @@ jobs:
           NOTION_LINE_INBOX_PARTNER_PROP: ${{ secrets.NOTION_LINE_INBOX_PARTNER_PROP }}
           NOTION_LINE_INBOX_DONE_PROP: ${{ secrets.NOTION_LINE_INBOX_DONE_PROP }}
           NOTION_LINE_INBOX_WINDOW_DAYS: ${{ secrets.NOTION_LINE_INBOX_WINDOW_DAYS }}
-        run: npm run morning:daily-command
-
-      - name: '② Client sales (Smaregi → Notion + Slack)'
-        env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          SLACK_DAILY_COMMAND_WEBHOOK_URL: ${{ secrets.SLACK_DAILY_COMMAND_WEBHOOK_URL }}
           SMAREGI_CLIENT_ID: ${{ secrets.SMAREGI_CLIENT_ID }}
           SMAREGI_CLIENT_SECRET: ${{ secrets.SMAREGI_CLIENT_SECRET }}
           SMAREGI_CONTRACT_ID: ${{ secrets.SMAREGI_CONTRACT_ID }}
-          # 朝はスマレジ集計が遅れがちなので空レス時に数回待つ（最大約4分）
           SMAREGI_EMPTY_RETRIES: '4'
           SMAREGI_EMPTY_RETRY_MS: '60000'
-        run: npm run sales
-
-      - name: '③ News pick + daily quote → Slack（Notionデイリーログはアーカイブ全文）'
-        env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          SLACK_DAILY_COMMAND_WEBHOOK_URL: ${{ secrets.SLACK_DAILY_COMMAND_WEBHOOK_URL }}
-          SMAREGI_CLIENT_ID: ${{ secrets.SMAREGI_CLIENT_ID }}
-          SMAREGI_CLIENT_SECRET: ${{ secrets.SMAREGI_CLIENT_SECRET }}
-          SMAREGI_CONTRACT_ID: ${{ secrets.SMAREGI_CONTRACT_ID }}
-        run: npm run brief
+        run: npm run morning:ci

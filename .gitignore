@@ -1,7 +1,20 @@
 node_modules/
 .env
+.claude/settings.local.json
+.freee-token.json
+receipt-import-state.json
 .DS_Store
 logs/
 data/
+
+# ABC レポート（売上データを含むためコミットしない）
+docs/pdca-abc/pdca-abc-*.md
+docs/pdca-abc/latest.md
+
+# LINE 書き出しの .txt はコミットしない（README だけ例外）
+line-imports/*.txt
+line-imports/**/*.txt
+!line-imports/README.txt
+line-imports/.ingest-state.json
 generate-march.js
 fix-march-entries.js

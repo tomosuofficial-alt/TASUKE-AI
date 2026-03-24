@@ -5,10 +5,9 @@ const https = require('https');
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 const rss = new RSSParser();
+const { fetchCaseClientStatuses, BRIEF_CLIENT_ORDER: CLIENTS } = require('./scripts/lib/notion-case-client-status.js');
 
 const DAILY_LOG_DB = 'b16ea51c-cd90-470f-8072-6eb4a6536da3';
-const KPI_DB = '6b9f8d67-dbed-4f65-9069-67bc0925d711';
-const CLIENTS = ['よいどころ千福', 'Niki★DINER', 'Bistro Knocks', 'Mz cafe'];
 const RSS_FEEDS = [
   'https://www.ssnp.co.jp/feed/',
   'https://ainow.ai/feed/',
@@ -22,6 +21,32 @@ const AI_MESSAGES = [
   '迷ったら動く。完璧より完了を優先しよう。',
   '今日の意思決定が、2029年の年商1億円につながっている。',
 ];
+
+/** 東京の暦での YYYY-MM-DD（cron が UTC のマシンでもずれない） */
+function dateKeyTokyo(d = new Date()) {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' });
+}
+
+function addCalendarDaysYmd(ymd, delta) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + delta);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+}
+
+function yesterdayKeyTokyo(d = new Date()) {
+  return addCalendarDaysYmd(dateKeyTokyo(d), -1);
+}
+
+function ymdToSlash(ymd) {
+  return ymd.replace(/-/g, '/');
+}
+
+function dateSlashWithWeekdayTokyo(d = new Date()) {
+  const slash = ymdToSlash(dateKeyTokyo(d));
+  const wd = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', weekday: 'short' }).format(d);
+  return `${slash}（${wd}）`;
+}
 
 // ─── スマレジ アクセストークン取得 ───────────────────────────
 async function getSmaregiToken() {
@@ -65,10 +90,8 @@ async function fetchSmaregiSales() {
   if (!token) return null;
 
   const contractId = process.env.SMAREGI_CONTRACT_ID;
-  // 朝8時実行のため前日の売上を取得
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const sumDate = yesterday.toISOString().split('T')[0];
+  // 朝実行想定: 東京の「昨日」の締め
+  const sumDate = yesterdayKeyTokyo();
 
   return new Promise((resolve) => {
     const req = https.request({
@@ -104,43 +127,19 @@ async function fetchSmaregiSales() {
 }
 
 function formatSales(data) {
-  if (!data) return '・データなし（未締め）';
-  const lines = [`・売上：¥${data.salesTotal.toLocaleString('ja-JP')}`];
+  if (!data) return '  ⚠ データなし（未締め・API未設定など）';
+  const lines = [`  • 売上合計 … ¥${data.salesTotal.toLocaleString('ja-JP')}`];
   if (data.transactionCount > 0) {
-    lines.push(`・客数：${data.transactionCount}人`);
-    lines.push(`・客単価：¥${data.unitPrice.toLocaleString('ja-JP')}`);
+    lines.push(`  • 客数 … ${data.transactionCount}人`);
+    lines.push(`  • 客単価 … ¥${data.unitPrice.toLocaleString('ja-JP')}`);
+  } else {
+    lines.push('  • 客数 … 0（または未計上）');
   }
   return lines.join('\n');
 }
 
 async function fetchClientStatuses() {
-  try {
-    const response = await notion.databases.query({
-      database_id: 'e8434c27-61bf-436b-9bf2-601b5ff4d848',
-    });
-
-    const statuses = {};
-    CLIENTS.forEach(name => { statuses[name] = '情報なし'; });
-
-    response.results.forEach(page => {
-      const nameProp = page.properties['名前'] || page.properties['title'] || page.properties['クライアント名'];
-      const statusProp = page.properties['ステータス'] || page.properties['Status'];
-
-      if (nameProp && statusProp) {
-        const name = nameProp.title?.[0]?.plain_text || '';
-        const status = statusProp.select?.name || statusProp.status?.name || '未設定';
-        if (CLIENTS.includes(name)) {
-          statuses[name] = status;
-        }
-      }
-    });
-
-    return statuses;
-  } catch {
-    const statuses = {};
-    CLIENTS.forEach(name => { statuses[name] = '取得エラー'; });
-    return statuses;
-  }
+  return fetchCaseClientStatuses(notion);
 }
 
 const RSS_LABELS = {
@@ -170,13 +169,10 @@ function getAIMessage() {
   return AI_MESSAGES[index];
 }
 
-function formatDate(date) {
-  return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
-}
-
 async function generateBrief() {
   const today = new Date();
-  const dateStr = formatDate(today);
+  const dateStr = ymdToSlash(dateKeyTokyo(today));
+  const dateHuman = dateSlashWithWeekdayTokyo(today);
 
   console.log(`[${dateStr}] 朝次ブリーフ生成開始...`);
 
@@ -186,35 +182,48 @@ async function generateBrief() {
     fetchSmaregiSales(),
   ]);
 
-  const clientLines = CLIENTS.map(name => `・${name}：${statuses[name]}`).join('\n');
-  const trendLines = trends.map(t => `・${t}`).join('\n');
+  const clientLines = CLIENTS.map((name) => `  • ${name} … ${statuses[name]}`).join('\n');
+  const trendLines = trends.map((t) => `  • ${t}`).join('\n');
   const aiMessage = getAIMessage();
 
-  // 前日の日付
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = formatDate(yesterday);
+  const yesterdayStr = ymdToSlash(yesterdayKeyTokyo(today));
 
-  const briefText = `【TASUKE.AI 朝次ブリーフ】${dateStr}
+  // Slack ①②と重複しないよう、③はニュース＋ひとことだけ（読みやすさ優先）
+  const slackText = `【③ ニュース＆今日のひとこと】#daily-command 朝7:00｜${dateHuman}
 
-■ 案件ステータス
-${clientLines}
-
-■ 昨日の売上（${yesterdayStr}）
-よいどころ千福（スマレジ）
-${formatSales(smaregiData)}
-
-■ 注目トレンド
+────────────
+【ニュースピック】RSSから各1件ずつ
 ${trendLines}
 
-■ 今日のひとこと
-${aiMessage}`;
+────────────
+【今日のひとこと】
+  ${aiMessage}`;
 
-  console.log('\n' + briefText + '\n');
+  // Notion デイリーログには、その日のスナップショット全文を残す
+  const notionArchiveText = `【朝のアーカイブ・全文】${dateHuman}
+（Slackでは ①予定・案件 ②売上 のあとに ③として送っている内容＋参照用の複製）
+
+────────────
+【クライアント案件のステータス】Notion案件管理
+${clientLines}
+
+────────────
+【昨日の店舗売上】よいどころ千福・スマレジ（集計日 ${yesterdayStr}）
+${formatSales(smaregiData)}
+
+────────────
+【ニュースピック】
+${trendLines}
+
+────────────
+【今日のひとこと】
+  ${aiMessage}`;
+
+  console.log('\n' + slackText + '\n');
 
   await Promise.all([
-    saveToNotion(briefText, dateStr, today),
-    sendToSlack(briefText),
+    saveToNotion(notionArchiveText, dateStr, today),
+    sendToSlack(slackText),
   ]);
 
   console.log('完了！');
@@ -229,7 +238,7 @@ async function saveToNotion(briefText, dateStr, date) {
           title: [{ text: { content: `朝次ブリーフ ${dateStr}` } }],
         },
         '日付': {
-          date: { start: date.toISOString().split('T')[0] },
+          date: { start: dateKeyTokyo(date) },
         },
       },
       children: [
@@ -249,8 +258,19 @@ async function saveToNotion(briefText, dateStr, date) {
 }
 
 async function sendToSlack(text) {
+  const rawUrl = process.env.SLACK_DAILY_COMMAND_WEBHOOK_URL;
+  if (!rawUrl) {
+    console.error('✗ SLACK_DAILY_COMMAND_WEBHOOK_URL が未設定のため Slack に送れません');
+    return;
+  }
+  let webhookUrl;
+  try {
+    webhookUrl = new URL(rawUrl);
+  } catch (err) {
+    console.error('✗ Slack Webhook URL が不正です:', err.message);
+    return;
+  }
   return new Promise((resolve) => {
-    const webhookUrl = new URL(process.env.SLACK_DAILY_COMMAND_WEBHOOK_URL);
     const body = JSON.stringify({ text });
 
     const req = https.request({

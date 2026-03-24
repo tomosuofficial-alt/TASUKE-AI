@@ -32,6 +32,7 @@ Founder の指示を読み取り、以下のいずれかに分類してくださ
 - CSVを取り込みたい
 - KPIを更新したい
 - 数値集計をしたい
+- freee・経費・レシート取込（`receipt-import.js`）
 
 ## operations に送る依頼
 - 朝次ブリーフ

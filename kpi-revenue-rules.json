@@ -1,0 +1,44 @@
+{
+  "_doc": "分類ルールの書き方は docs/kpi-revenue-rules.md。キー _ で始まる項目は無視されます。",
+  "version": 1,
+  "default_bucket": "spot",
+  "rules": [
+    {
+      "_comment": "品目・取引先に含まれる文字で判定（上から順に最初の一致のみ採用）",
+      "if": { "item_name_contains": "月額" },
+      "bucket": "ops"
+    },
+    {
+      "if": { "item_name_contains": "運用" },
+      "bucket": "ops"
+    },
+    {
+      "if": { "item_name_contains": "Instagram" },
+      "bucket": "ops"
+    },
+    {
+      "if": { "item_name_contains": "コンサル" },
+      "bucket": "consulting"
+    },
+    {
+      "if": { "item_name_contains": "顧問" },
+      "bucket": "consulting"
+    },
+    {
+      "if": { "item_name_contains": "提案" },
+      "bucket": "consulting"
+    },
+    {
+      "if": { "partner_name_contains": "よいどころ" },
+      "bucket": "ops"
+    },
+    {
+      "if": { "partner_name_contains": "Niki" },
+      "bucket": "ops"
+    },
+    {
+      "if": { "partner_name_contains": "Mz" },
+      "bucket": "ops"
+    }
+  ]
+}

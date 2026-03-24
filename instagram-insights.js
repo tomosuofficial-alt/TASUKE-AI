@@ -1,8 +1,12 @@
 require('dotenv').config();
 const https = require('https');
 const { Client } = require('@notionhq/client');
+const { queryContentDataSource } = require('./scripts/lib/notion-content-data-source-query.js');
 
-const notion = new Client({ auth: process.env.NOTION_TOKEN });
+const notion = new Client({
+  auth: process.env.NOTION_TOKEN,
+  notionVersion: '2025-09-03',
+});
 const CONTENT_DB = '942d70a4-e645-464e-a1ab-5176bce10939';
 
 const META_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || '';
@@ -102,8 +106,7 @@ async function getNotionEntries(clientName, days) {
   since.setDate(since.getDate() - days);
   const sinceStr = since.toISOString().split('T')[0];
 
-  const result = await notion.databases.query({
-    database_id: CONTENT_DB,
+  const result = await queryContentDataSource({
     filter: {
       and: [
         {
@@ -117,6 +120,7 @@ async function getNotionEntries(clientName, days) {
       ],
     },
     sorts: [{ property: '投稿日', direction: 'ascending' }],
+    page_size: 100,
   });
 
   return result.results;

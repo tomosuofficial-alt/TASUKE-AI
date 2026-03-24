@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "朝次ブリーフ (brief.js)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "brief"],
+      "port": 0
+    },
+    {
+      "name": "売上レポート (sales-report.js)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "sales"],
+      "port": 0
+    },
+    {
+      "name": "CSV取り込み (import-csv.js)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "import:csv"],
+      "port": 0
+    },
+    {
+      "name": "スマレジCSV取り込み (import-smaregi.js)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "import:smaregi"],
+      "port": 0
+    }
+  ]
+}
