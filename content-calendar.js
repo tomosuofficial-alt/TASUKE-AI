@@ -2,6 +2,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client } = require('@notionhq/client');
+const { GoogleGenAI } = require('@google/genai');
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
@@ -14,6 +15,21 @@ const CONTENT_DATA_SOURCE_ID =
   process.env.NOTION_CONTENT_DATA_SOURCE_ID || 'f61e6093-e419-4475-b8d3-64d294983959';
 
 const { queryContentDataSource } = require('./scripts/lib/notion-content-data-source-query.js');
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+/** data_sources API（SDK未対応）でプロパティスキーマを取得 */
+async function fetchDataSourceProperties(dataSourceId) {
+  const res = await fetch(`https://api.notion.com/v1/data_sources/${dataSourceId}`, {
+    headers: {
+      'Authorization': `Bearer ${process.env.NOTION_TOKEN}`,
+      'Notion-Version': '2025-09-03',
+    },
+  });
+  if (!res.ok) throw new Error(`data_sources API ${res.status}: ${await res.text()}`);
+  const body = await res.json();
+  return body.properties || {};
+}
 
 // ─── 月名ヘルパー ────────────────────────────────────────────────
 
@@ -73,7 +89,39 @@ const CLIENT_CONFIGS = {
       '雰囲気・空間',
       'お客様の注文風景',
     ],
-    // テーマとフックを必ず一致させる（旧: hookTemplates を postIndex だけで回していてズレていた）
+    // テーマ×月ローテーション（月番号 % パターン数 で自動切替）
+    hookByThemeVariants: {
+      '人気No.1メニュー': [
+        'カフェだと思った？ 実はここ、大人の洋風酒場です',
+        '高崎駅5分、この看板メニューだけで通う価値がある',
+        '「いつもの」がある店って、最強じゃない？',
+      ],
+      '新作・限定メニュー': [
+        '1軒目にも2軒目にもなる店、知ってる？',
+        '来月にはもう食べられないかもしれない',
+        '季節が変わるたび、ここのメニューも変わる',
+      ],
+      '調理シーン・盛付け': [
+        'チーズがとろける、この瞬間、見える？',
+        '目の前で仕上がる料理、それだけで「ごちそう」',
+        'この音、この香り。動画で伝わるかな',
+      ],
+      'ドリンク・スイーツ': [
+        '仕事終わりの一杯、こんな場所で飲みたくない？',
+        'カフェなのに、ちゃんと酔える。それがいい',
+        '〆のスイーツまで完璧な夜、ここにある',
+      ],
+      '雰囲気・空間': [
+        'ここ、本当にカフェ？',
+        '間接照明と木のぬくもり。この距離感がちょうどいい',
+        'ひとりでも誰かとでも。居心地のいい夜を',
+      ],
+      'お客様の注文風景': [
+        '女子会の場所、まだ決まってないなら',
+        'テーブルに並んだ料理が、この店の実力です',
+        '「全部おいしそうで決まらない」が正解',
+      ],
+    },
     hookByTheme: {
       '人気No.1メニュー': 'カフェだと思った？ 実はここ、大人の洋風酒場です',
       '新作・限定メニュー': '1軒目にも2軒目にもなる店、知ってる？',
@@ -90,6 +138,38 @@ const CLIENT_CONFIGS = {
       '〆のラーメングラタン、これが正解',
       '女子会の場所、まだ決まってないなら',
     ],
+    ctaByThemeVariants: {
+      '人気No.1メニュー': [
+        'プロフィールのリンクから予約できます',
+        '「行きたい」と思ったら保存しておいてね',
+        '友達にもシェアして。一緒に行こう',
+      ],
+      '新作・限定メニュー': [
+        '気になったら保存してね',
+        '今だけのメニュー、お見逃しなく',
+        '限定メニューの詳細はプロフィールから',
+      ],
+      '調理シーン・盛付け': [
+        'DMで予約も受付中',
+        'この料理、実物はもっとすごい。来てみて',
+        '予約はプロフィールのリンクから',
+      ],
+      'ドリンク・スイーツ': [
+        '今週の女子会ここにしない？ タグ付けして教えて',
+        '〆の一杯、ここで決まり。保存しておいてね',
+        '飲みたくなったらDMでも予約OK',
+      ],
+      '雰囲気・空間': [
+        'プロフィールのリンクから予約できます',
+        'デートにも女子会にも。場所はここで決まり',
+        '気になったら保存して、次の夜に',
+      ],
+      'お客様の注文風景': [
+        '気になったら保存してね',
+        '迷ったらこの投稿を見せて注文してね',
+        '友達をタグ付けして「ここ行こう」って送って',
+      ],
+    },
     ctaTemplates: [
       'プロフィールのリンクから予約できます',
       '気になったら保存してね',
@@ -103,7 +183,39 @@ const CLIENT_CONFIGS = {
     },
     bgmOptions: ['おしゃれカフェ系', '落ち着きジャズ系'],
 
-    // ── テーマ別キャプションテンプレ（{season}は自動置換） ──
+    // ── テーマ別キャプション（月番号 % 3 で自動ローテーション、{season}は自動置換） ──
+    captionVariants: {
+      '人気No.1メニュー': [
+        `カフェだと思った？\n実はここ、大人の洋風酒場です。\n\n看板メニューのマルゲリータピザ。\nカフェの気軽さで、本格的な味。\n\n1軒目のしっかりご飯にも、\n2軒目の軽い一杯にも。\n\nどんな夜にもフィットする、\n「自分のための場所」がここにあります。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+        `高崎駅から5分。\n知る人ぞ知る、大人の洋風酒場。\n\n焼きたてのマルゲリータを頬張りながら、\nクラフトビールを傾ける。\n\nこの贅沢、カフェ価格で味わえるって\n知ってました？\n\n{season}の夜、ふらっと寄れる\n「自分だけの定番」を見つけてほしい。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+        `「いつもの」がある店って、最強だと思う。\n\n迷わず頼めるマルゲリータ。\n気分で変えるドリンク。\n変わらない居心地のよさ。\n\nカフェみたいに気軽で、\nバーみたいに大人っぽい。\n\nそういう場所が\n高崎駅のすぐそばにあります。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+      ],
+      '新作・限定メニュー': [
+        `{season}だけの、特別なひと皿。\n\n新メニューが登場しました。\n定番も好きだけど、\n今しか食べられないものにも惹かれる。\n\n来週にはもうないかもしれない。\nそういうものって、\n今日食べるのが正解だと思う。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+        `{season}の新作、できました。\n\nシェフが「今の季節だからこそ」と\n仕込んだ一品。\n\n定番メニューの安心感もいいけど、\n「今だけ」の特別感には敵わない。\n\n次に来たときにはもうないかも。\nだから今日、食べに来てほしい。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+        `メニューが変わるたびに、\nまた来たくなる店。\n\n{season}限定の新作は\nシェフのこだわりが詰まった一皿。\n\n「前に来たときと違うメニューがある」\nそれだけで、足を運ぶ理由になる。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+      ],
+      '調理シーン・盛付け': [
+        `チーズがとろける、この瞬間。\n\n目の前で仕上がっていく料理は、\nそれだけでもう「ごちそう」。\n\nカフェの雰囲気で、\n本格的な調理を楽しめる。\nそれがM'z cafeのスタイル。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+        `焼き上がる音、立ち上る湯気、\nとろけるチーズ。\n\n「おいしい」は、\n食べる前からもう始まってる。\n\nキッチンから届く香りに誘われて、\n思わず覗き込みたくなる。\n\nそんな瞬間を、カフェで。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+        `料理が仕上がる瞬間って、\n一番テンションが上がりませんか？\n\nソースをかける手つき、\n最後にハーブを添える丁寧さ。\n\nカフェの気軽さの中に、\nちゃんと「本気」がある。\n\nそれがこの店の魅力です。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+      ],
+      'ドリンク・スイーツ': [
+        `仕事終わりの一杯、\nこんな場所で飲みたくない？\n\nタップマルシェのクラフトビール、\nフルーツサワー、ワイン。\n\n〆にはハニートーストか\nアフォガートを。\n\nカフェなのにちゃんと酔える。\nそれがこの店のいいところ。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+        `カフェで飲む一杯が、\n一番リラックスできる説。\n\nクラフトビール、ワイン、\n季節のフルーツサワー。\n\nお酒のあとは\nハニートーストで甘い〆。\n\n{season}の夜、\nここで過ごす時間が好きです。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+        `「ごはんも食べたいし、\nお酒も飲みたいし、\nスイーツも欲しい。」\n\n全部叶う場所、あります。\n\nタップマルシェのビールで乾杯して、\nピザをつまんで、\n最後はアフォガートで〆る。\n\n完璧な夜の過ごし方。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+      ],
+      '雰囲気・空間': [
+        `ここ、本当にカフェ？\n\n間接照明が灯る落ち着いた空間。\n木のぬくもりと、\nちょうどいい距離感。\n\nひとりで来ても、\n誰かと来ても、\n居心地がいい場所。\n\nカフェの気軽さと、\nバーの大人っぽさが\n同居しています。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+        `間接照明と木のぬくもり。\nこの距離感がちょうどいい。\n\n声のトーンを落として、\nゆっくり話せる場所。\n\nデートでも、ひとり飲みでも、\n女子会でも。\n\nどんなシーンにもフィットする\n{season}の夜をここで。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+        `「いい店知ってるよ」\nって言いたくなる場所。\n\nカフェの気軽さで入れるのに、\n中に入ると空気が変わる。\n\n照明、音楽、木の質感。\n全部がちょうどいい。\n\n誰かを連れてきたくなる店。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+      ],
+      'お客様の注文風景': [
+        `「何にする？」\n「全部おいしそうで決まらない」\n\nテーブルに並ぶ料理を見れば、\nこの店の実力がわかる。\n\nリアルな食事風景から伝わる、\n「また来たい」の空気感。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+        `テーブルに並んだ料理が、\nこの店の実力です。\n\nピザ、パスタ、サラダ、\nそしてクラフトビール。\n\n「あれもこれも頼みたい」\nそう思えるメニューの幅が、\nこの店の強さ。\n\n次は何を頼もうかな。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+        `「また来たい」って思える店、\nいくつありますか？\n\n料理の味、空間の心地よさ、\nスタッフの距離感。\n\n全部がちょうどいいから、\n気づいたらまた来てる。\n\nそういう店です。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
+      ],
+    },
     captionTemplates: {
       '人気No.1メニュー': `カフェだと思った？\n実はここ、大人の洋風酒場です。\n\n看板メニューのマルゲリータピザ。\nカフェの気軽さで、本格的な味。\n\n1軒目のしっかりご飯にも、\n2軒目の軽い一杯にも。\n\nどんな夜にもフィットする、\n「自分のための場所」がここにあります。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
       '新作・限定メニュー': `{season}だけの、特別なひと皿。\n\n新メニューが登場しました。\n定番も好きだけど、\n今しか食べられないものにも惹かれる。\n\n来週にはもうないかもしれない。\nそういうものって、\n今日食べるのが正解だと思う。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
@@ -391,38 +503,53 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
     instagramAccount: '@niki_diner',
     materialBasePath: '/Volumes/Home_Mac_SSD/01_Projects/Niki_Diner/03_Material',
 
-    // ── 素材カタログ（Niki★DINERはサブフォルダ名で管理） ──
+    // ── 素材カタログ（Niki★DINER） ──
+    // ◎ = 09_Prosnap（2026-02撮影・赤背景統一・最優先で使う）
+    // ★ = プロ撮影・編集済み（高品質・そのまま使える）
+    // ☆ = プロ撮影・切り抜き（背景透過・合成用途にも）
     nikiMaterialCatalog: {
-      'スマッシュバーガー編集済': { dir: '02_Photos/10_Menu_Photos_Edit/1_Smash_Burgers', count: 5 },
-      'バーガー編集済':     { dir: '02_Photos/10_Menu_Photos_Edit/2_Niki_burgers', count: 18 },
-      'サンドイッチ編集済':  { dir: '02_Photos/10_Menu_Photos_Edit/3_Sandwiches', count: 13 },
-      'ライスプレート編集済': { dir: '02_Photos/10_Menu_Photos_Edit/4_Riceplate_Salad', count: 13 },
-      'サイド編集済':       { dir: '02_Photos/10_Menu_Photos_Edit/5_Side', count: 11 },
-      'ドリンク・デザート':  { dir: '02_Photos/10_Menu_Photos_Edit/6_Dersert_Drink', count: 9 },
-      'セットメニュー':     { dir: '02_Photos/10_Menu_Photos_Edit/7_Set', count: 4 },
-      'エクストラ':        { dir: '02_Photos/10_Menu_Photos_Edit/8_Extra', count: 8 },
-      'バーガー切り抜き':   { dir: '02_Photos/11_Menu_Cutouts/2_Niki_burgers', count: 4 },
-      'ライスプレート切り抜き': { dir: '02_Photos/11_Menu_Cutouts/4_Riceplate_Salad', count: 10 },
-      '外観':             { dir: '02_Photos/01_Exterior', count: 28 },
+      // ◎ Prosnap（最優先）— 番号帯でカテゴリ分け
+      'Prosnap_バーガー':       { dir: '02_Photos/09_Prosnap', count: 39, startNum: 1, endNum: 39, pro: true },    // ◎ 001-039
+      'Prosnap_ライスプレート':  { dir: '02_Photos/09_Prosnap', count: 16, startNum: 40, endNum: 55, pro: true },   // ◎ 040-055
+      'Prosnap_サラダ':         { dir: '02_Photos/09_Prosnap', count: 5, startNum: 56, endNum: 60, pro: true },     // ◎ 056-060
+      'Prosnap_サイド':         { dir: '02_Photos/09_Prosnap', count: 12, startNum: 61, endNum: 72, pro: true },    // ◎ 061-072
+      'Prosnap_副菜':           { dir: '02_Photos/09_Prosnap', count: 14, startNum: 73, endNum: 86, pro: true },    // ◎ 073-086
+      'Prosnap_ドリンク':       { dir: '02_Photos/09_Prosnap', count: 10, startNum: 87, endNum: 96, pro: true },    // ◎ 087-096
+      'Prosnap_デザート':       { dir: '02_Photos/09_Prosnap', count: 17, startNum: 97, endNum: 113, pro: true },   // ◎ 097-113
+      // ★ 編集済み
+      'スマッシュバーガー編集済': { dir: '02_Photos/10_Menu_Photos_Edit/1_Smash_Burgers', count: 5, pro: true },
+      'バーガー編集済':     { dir: '02_Photos/10_Menu_Photos_Edit/2_Niki_burgers', count: 18, pro: true },
+      'サンドイッチ編集済':  { dir: '02_Photos/10_Menu_Photos_Edit/3_Sandwiches', count: 13, pro: true },
+      'ライスプレート編集済': { dir: '02_Photos/10_Menu_Photos_Edit/4_Riceplate_Salad', count: 13, pro: true },
+      'サイド編集済':       { dir: '02_Photos/10_Menu_Photos_Edit/5_Side', count: 11, pro: true },
+      'ドリンク・デザート編集済': { dir: '02_Photos/10_Menu_Photos_Edit/6_Dersert_Drink', count: 9, pro: true },
+      'セットメニュー':     { dir: '02_Photos/10_Menu_Photos_Edit/7_Set', count: 4, pro: true },
+      'エクストラ':        { dir: '02_Photos/10_Menu_Photos_Edit/8_Extra', count: 8, pro: true },
+      // ☆ 切り抜き
+      'スマッシュ切り抜き':  { dir: '02_Photos/11_Menu_Cutouts/1_Smash_Burgers', count: 10, pro: true },
+      'バーガー切り抜き':   { dir: '02_Photos/11_Menu_Cutouts/2_Niki_burgers', count: 4, pro: true },
+      'サンドイッチ切り抜き': { dir: '02_Photos/11_Menu_Cutouts/3_Sandwiches', count: 7, pro: true },
+      'ライスプレート切り抜き': { dir: '02_Photos/11_Menu_Cutouts/4_Riceplate_Salad', count: 10, pro: true },
+      'サイド切り抜き':     { dir: '02_Photos/11_Menu_Cutouts/5_Side', count: 10, pro: true },
+      'デザート・ドリンク切り抜き': { dir: '02_Photos/11_Menu_Cutouts/6_Dersert_Drink', count: 6, pro: true },
+      // その他
+      '外観':             { dir: '02_Photos/01_Exterior', count: 27 },
       '内装':             { dir: '02_Photos/02_Interior', count: 17 },
       '料理Raw':          { dir: '02_Photos/03_Food_Raw', count: 8 },
       'ドリンクRaw':       { dir: '02_Photos/04_Drink_Raw', count: 2 },
       'キッチンシーン':     { dir: '02_Photos/05_Kitchen_Scene', count: 2 },
       'ピープルスナップ':   { dir: '02_Photos/06_People_Snap', count: 13 },
+      'AI生成':           { dir: '02_Photos/04_AI_Generated', count: 9 },
       '調理動画':          { dir: '03_Movies/02_People', count: 8, ext: '.mov' },
     },
 
     // テーマ → 素材マッピング（画像3枚 + 動画1本）
-    // キャプション内容に合わせた素材選定:
-    //   看板バーガー: スマッシュ製法・肉汁 → スマッシュバーガー写真 + キッチン（鉄板）
-    //   調理ライブ: 鉄板・ソース・ベーコン → キッチンシーン + 調理工程
-    //   ライスプレート: ロコモコ・チキンオーバーライス → ライスプレート中心
-    //   空間・映えドリンク: ネオン・クリームソーダ → 内装 + ドリンク
+    // ◎ Prosnap を最優先、各テーマの画像3枚のうち2枚以上を Prosnap から選択
     themeMaterialMap: {
-      '看板バーガー':           { nikiImages: ['スマッシュバーガー編集済', 'キッチンシーン', 'バーガー編集済'], nikiVideo: '調理動画' },
-      '調理ライブ':            { nikiImages: ['キッチンシーン', 'スマッシュバーガー編集済', '料理Raw'], nikiVideo: '調理動画' },
-      'ライスプレート・夜ダイナー': { nikiImages: ['ライスプレート編集済', 'サイド編集済', 'ドリンク・デザート'], nikiVideo: '調理動画' },
-      '空間・映えドリンク':      { nikiImages: ['内装', 'ドリンク・デザート', 'ピープルスナップ'], nikiVideo: '調理動画' },
+      '看板バーガー':           { nikiImages: ['Prosnap_バーガー', 'Prosnap_バーガー', 'Prosnap_サイド'], nikiVideo: '調理動画' },
+      '調理ライブ':            { nikiImages: ['Prosnap_バーガー', 'Prosnap_サイド', 'Prosnap_副菜'], nikiVideo: '調理動画' },
+      'ライスプレート・夜ダイナー': { nikiImages: ['Prosnap_ライスプレート', 'Prosnap_サラダ', 'Prosnap_サイド'], nikiVideo: '調理動画' },
+      '空間・映えドリンク':      { nikiImages: ['Prosnap_ドリンク', 'Prosnap_デザート', 'Prosnap_デザート'], nikiVideo: '調理動画' },
     },
 
     themeRotation: [
@@ -431,6 +558,28 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
       'ライスプレート・夜ダイナー',
       '空間・映えドリンク',
     ],
+    hookByThemeVariants: {
+      '看板バーガー': [
+        '上州牛を鉄板にギュッと押し付けると…',
+        'この断面、見てほしい。肉汁が止まらない',
+        'ジャンクに見えて、実は本格派。それがスマッシュバーガー',
+      ],
+      '調理ライブ': [
+        'ソースもベーコンも全部手作り。これがクラフトバーガー',
+        '鉄板の上で起きてること、全部見せます',
+        'この音と香り、画面越しに伝わるかな',
+      ],
+      'ライスプレート・夜ダイナー': [
+        'ハンバーガー屋のロコモコ、食べたことある？',
+        'バーガーだけじゃない。ここのライスプレートが実はすごい',
+        'ランチもディナーも全力。それがダイナースタイル',
+      ],
+      '空間・映えドリンク': [
+        'NYスタイルの空間で、クリームソーダを。',
+        '高崎駅でアメリカ気分。ネオンが光るダイナーへ',
+        'バーガーの後のクリームソーダ、これが正解',
+      ],
+    },
     hookByTheme: {
       '看板バーガー': '上州牛を鉄板にギュッと押し付けると…',
       '調理ライブ': 'ソースもベーコンも全部手作り。これがクラフトバーガー',
@@ -443,6 +592,28 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
       'ソースもベーコンも全部手作り。これがクラフトバーガー',
       'ハンバーガー屋のロコモコ、食べたことある？',
     ],
+    ctaByThemeVariants: {
+      '看板バーガー': [
+        'フォローして最新メニューをチェック',
+        '食べたくなったら保存しておいてね',
+        'バーガー好きの友達をタグ付けして',
+      ],
+      '調理ライブ': [
+        '高崎モントレー5F。駅直結です',
+        'この動画、保存して次のランチの参考に',
+        'フォローすると調理動画がもっと見れます',
+      ],
+      'ライスプレート・夜ダイナー': [
+        '友達をタグ付けして教えてあげて',
+        'ランチに迷ったらここ。保存しておいてね',
+        'メニュー全部見たい人はプロフィールから',
+      ],
+      '空間・映えドリンク': [
+        '気になったら保存 📌',
+        'デートにも使える。場所は高崎モントレー5F',
+        '映えスポット探してる人、ここだよ',
+      ],
+    },
     ctaTemplates: [
       'フォローして最新メニューをチェック',
       '高崎モントレー5F。駅直結です',
@@ -456,6 +627,28 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
     },
     bgmOptions: ['元気ポップ系'],
 
+    captionVariants: {
+      '看板バーガー': [
+        `上州牛を鉄板にギュッと押し付けると…\n\n表面はカリッと香ばしく、\n中は肉汁がジュワッと溢れ出す。\n\nこれが「スマッシュ製法」。\n上州牛100%の\nビーフパティ。\n\nグルメバーガーのパイオニア\n吉澤清太氏がプロデュースした\n本格クラフトバーガー。\n\nジャンクに見えて、実は本格派。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+        `この断面、見てほしい。\n\n上州牛100%のパティを\n高温の鉄板でギュッとプレス。\n\n外はカリッと焦げ目がついて、\n中から肉汁がじゅわっと。\n\nこれが「スマッシュバーガー」。\n一度食べたら、普通のバーガーに\n戻れなくなるかもしれない。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+        `ジャンクフードだと思ってない？\n\n上州牛を使ったパティ、\n自家製ベーコン、特製ソース。\n\n全部にこだわりがある\n「クラフト」バーガー。\n\nグルメバーガーのパイオニア\n吉澤清太氏が本気で作った味。\n\n食べればわかる。\nこれは「ちゃんとした」バーガーです。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+      ],
+      '調理ライブ': [
+        `ソースもベーコンも全部手作り。\nこれがクラフトバーガー。\n\nパティを鉄板にギュッと押し付ける。\n燻製ベーコンの香りが立ち上る。\n特製ソースを丁寧に重ねる。\n\nひとつひとつの工程に、\n「本物」へのこだわりがある。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+        `鉄板の上で起きてること、\n全部見せます。\n\nパティをプレスする「ジュッ」という音。\nベーコンが焼ける香り。\nチーズがとろける瞬間。\n\n全部手作り、全部目の前で。\nこれがクラフトバーガーの現場。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+        `バーガーって、\n作る過程が一番おいしそう。\n\nパティを鉄板に押し付ける。\n肉汁がジュワッと広がる。\nチーズを乗せて、蓋をする。\n\nこの一連の流れ、\n何度見ても飽きない。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+      ],
+      'ライスプレート・夜ダイナー': [
+        `ハンバーガー屋のロコモコ、\n食べたことある？\n\nNYチキンオーバーライス、\nロコモコ、バッファローウイング。\n\nバーガーだけじゃない。\nダイナー飲みも、ガッツリ飯も。\n\nランチもディナーも、\n全時間帯で攻めてます。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+        `バーガーだけじゃない。\nここのライスプレートが実はすごい。\n\nロコモコ、チキンオーバーライス、\nバッファローウイング。\n\nアメリカンダイナーの\n「ガッツリ飯」を\n高崎駅直結で。\n\nランチにも、夜飲みの〆にも。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+        `{season}のランチ、どこ行く？\n\nバーガーもいいけど、\n今日はライスプレートの気分。\n\nNYチキンオーバーライスは\nスパイシーなチキンと\n特製ソースがご飯に絡んで最高。\n\n駅直結だから、\nサクッと食べて戻れるのもいい。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+      ],
+      '空間・映えドリンク': [
+        `NYスタイルの空間で、\nクリームソーダを。\n\nネオンサインが光るダイナー。\nアメリカの空気感を、\n高崎駅で味わえる。\n\nバーガーの後は\n自家製アップルパイと\nクリームソーダで〆。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+        `高崎駅でアメリカ気分。\n\nネオンが光る店内、\nレトロなダイナーの雰囲気。\n\nバーガーを食べた後は\nクリームソーダで一息。\n\n写真を撮りたくなる空間が\nここにあります。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+        `バーガーの後のクリームソーダ、\nこれが正解。\n\nネオンサインの下で、\nアップルパイとクリームソーダ。\n\nアメリカンダイナーの\n「〆のスイーツ」文化を\n高崎で体験してほしい。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+      ],
+    },
     captionTemplates: {
       '看板バーガー': `上州牛を鉄板にギュッと押し付けると…\n\n表面はカリッと香ばしく、\n中は肉汁がジュワッと溢れ出す。\n\nこれが「スマッシュ製法」。\n上州牛100%の\nビーフパティ。\n\nグルメバーガーのパイオニア\n吉澤清太氏がプロデュースした\n本格クラフトバーガー。\n\nジャンクに見えて、実は本格派。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
       '調理ライブ': `ソースもベーコンも全部手作り。\nこれがクラフトバーガー。\n\nパティを鉄板にギュッと押し付ける。\n燻製ベーコンの香りが立ち上る。\n特製ソースを丁寧に重ねる。\n\nひとつひとつの工程に、\n「本物」へのこだわりがある。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
@@ -466,34 +659,22 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
     // ── テーマ別編集手順（1ステップ=1ツール=1アクション） ──
     // DaVinci Resolveテンプレート: 「NIKI_メイン」を全テーマ共通で使い回す
     materialInstructions: {
-      '看板バーガー': `【STEP 1: 写真を選ぶ】
-フォルダ: 02_Photos/10_Menu_Photos_Edit/2_Niki_burgers/
-選び方: パティ断面・肉汁が見えるカットを1枚
-予備: 02_Photos/11_Menu_Cutouts/2_Niki_burgers/（切り抜き素材）
+      '看板バーガー': `【STEP 1: 写真を選ぶ】◎ Prosnap素材を最優先で使う
+メイン: 02_Photos/09_Prosnap/（◎ 001-039がバーガー系・赤背景統一・113枚）
+→ チーズがとろけている写真、パティ断面が見えるカットを優先（例: 010, 009, 030）
+※ Prosnapの品質が十分なのでImageFX加工は基本不要。縦構図が必要な場合のみリフレーム
 
-【STEP 2: 画像を加工する】
+【STEP 2: 画像を加工する（必要な場合のみ）】
 ツール: Google AI Studio → ImageFX
-やること: 写真をアップロード → 下の3つから1つ選んでコピペ入力
-
-プロンプトA（黒背景・スポットライト）:
+やること: 横構図を縦に変えたい場合のみ → 下のプロンプトをコピペ入力
 ┌────────────────────────
-│ このバーガー写真のシズル感を強調。肉汁と彩度UP。縦9:16。黒背景にスポットライト
+│ この料理写真を縦9:16にリフレーム。元の色味と品質を維持。赤い壁の背景を活かす
 └────────────────────────
-
-プロンプトB（肉汁クローズアップ）:
-┌────────────────────────
-│ このバーガー写真を超クローズアップ。パティの断面と肉汁が滴る瞬間を強調。縦9:16。背景ぼかし
-└────────────────────────
-
-プロンプトC（ダイナー雰囲気）:
-┌────────────────────────
-│ このバーガー写真を縦9:16。アメリカンダイナーのカウンターに置かれた雰囲気に。ネオンの反射光。ポテトとドリンクを追加
-└────────────────────────
-→ 生成された画像をダウンロード保存
+→ Prosnap素材はそのまま使えるクオリティなので、無理に加工しなくてOK
 
 【STEP 3: 動画にする】★ 看板メニューなのでVeo優先で使う
 ツール: Google AI Studio → Veo 3.1（1日3回まで）
-やること: STEP2の画像をアップロード → 下のプロンプトをコピペ入力
+やること: STEP1の写真をアップロード → 下のプロンプトをコピペ入力
 ┌────────────────────────
 │ バーガーの断面にゆっくりズームインする動画。肉汁が滴る。9:16縦。3秒
 └────────────────────────
@@ -502,135 +683,90 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
 【STEP 4: DaVinci Resolveで仕上げる】
 ツール: DaVinci Resolve → プロジェクト「NIKI_メイン」を複製して開く
 やること:
-1. 動画を差し替え → STEP3の動画（またはSTEP2の画像）を先頭にドラッグ
-2. 画像3枚を差し替え → STEP2の画像＋別アングル写真を後半にドラッグ
+1. 動画を差し替え → STEP3の動画（またはSTEP1の画像）を先頭にドラッグ
+2. 画像3枚を差し替え → Prosnapから別バーガー＋サイドメニュー写真を後半にドラッグ
 3. フック文テキストを差し替え → この投稿のフック文をコピペ
 4. BGMはテンプレ固定（変更不要）
 5. 書き出し → 1080x1920, MP4`,
 
-      '調理ライブ': `【STEP 1: 写真を選ぶ（3枚・調理工程順）】
-フォルダ: 02_Photos/10_Menu_Photos_Edit/2_Niki_burgers/
-選び方: 調理工程が伝わる3枚を以下の順で選ぶ
-  1枚目: 食材アップ or 鉄板予熱（これから始まる感）
-  2枚目: 調理中ハイライト（プレス・ソースがけ・重ね等）
-  3枚目: 完成品アップ（断面・肉汁が見えるカット）
-予備: 02_Photos/11_Menu_Cutouts/2_Niki_burgers/（切り抜き素材）
+      '調理ライブ': `【STEP 1: 写真を選ぶ（3枚・工程感）】◎ Prosnap素材を最優先で使う
+1枚目: 02_Photos/09_Prosnap/ からバーガー系（001-039）で断面・チーズとろけカット
+2枚目: 02_Photos/09_Prosnap/ からサイド系（061-072）でBBQチキン・ポテトなど
+3枚目: 02_Photos/09_Prosnap/ からコールスロー・副菜系（073-086）
+→ Prosnapの赤背景が統一感を出すので、3枚とも09_Prosnapから選ぶのがベスト
 
-【STEP 2: 各写真を加工する】
+【STEP 2: 画像を加工する（必要な場合のみ）】
 ツール: Google AI Studio → ImageFX
-やること: 各写真を1枚ずつアップロード → 下のプロンプトをコピペ入力（3枚とも同じプロンプト）
+やること: 横構図を縦に変えたい場合のみ → 下のプロンプトをコピペ入力
 ┌────────────────────────
-│ この料理写真を縦9:16。鉄板の熱気と臨場感を強調。彩度を上げてシズル感UP。湯気を追加。背景を暗くして料理を際立たせる
+│ この料理写真を縦9:16にリフレーム。鉄板の熱気と臨場感を強調。湯気を追加
 └────────────────────────
-→ 3枚分を繰り返す
 
 【STEP 3: 動画素材を用意する（1本）】※ Veo不要。既存動画を使う
 フォルダ: 03_Movies/02_People/（調理動画8本 .mov）
-選び方: スマッシュ瞬間・ソースがけ・チーズとろけ等のベストシーン（ジュワッ音が入っていれば最高）を1本
+選び方: スマッシュ瞬間・ソースがけ・チーズとろけ等のベストシーンを1本
 やること: 8秒程度のクリップにトリミング
 
 【STEP 4: DaVinci Resolveで仕上げる】
 ツール: DaVinci Resolve → プロジェクト「NIKI_メイン」を複製して開く
 やること:
 1. 動画を差し替え → STEP3の動画を先頭にドラッグ
-2. 画像3枚を差し替え → STEP2の加工済み画像を工程順に後半にドラッグ
+2. 画像3枚を差し替え → STEP1のProsnap写真を工程順に後半にドラッグ
 3. フック文テキストを差し替え → この投稿のフック文をコピペ
 4. BGMはテンプレ固定（変更不要）
 5. 書き出し → 1080x1920, MP4
 
 ★ このテーマは既存動画があるのでVeo枠を使わない。他のテーマに温存する`,
 
-      'ライスプレート・夜ダイナー': `【STEP 1: 写真を選ぶ】
-フォルダ: 02_Photos/10_Menu_Photos_Edit/4_Riceplate_Salad/
-選び方: ロコモコ・チキンオーバーライス系の写真を3枚
-予備: 02_Photos/11_Menu_Cutouts/4_Riceplate_Salad/（切り抜き素材）
+      'ライスプレート・夜ダイナー': `【STEP 1: 写真を選ぶ】◎ Prosnap素材を最優先で使う
+メイン: 02_Photos/09_Prosnap/（◎ 040-055がライスプレート系 — チキンオーバーライス・ロコモコ俯瞰）
+サブ:  02_Photos/09_Prosnap/（◎ 056-060がサラダ系）
+サブ:  02_Photos/09_Prosnap/（◎ 061-072がBBQチキン・サイド系）
+選び方: 俯瞰ショットのロコモコ(050)・チキンオーバーライス(040)を中心に3枚
 
-【STEP 2: 各写真を加工する】
+【STEP 2: 画像を加工する（必要な場合のみ）】
 ツール: Google AI Studio → ImageFX
-やること: 各写真を1枚ずつアップロード → 下の3つから1つ選んでコピペ入力（全枚同じプロンプトで統一感を出す）
-
-プロンプトA（ボリューム・暖色）:
+やること: 横構図を縦に変えたい場合のみ → 下のプロンプトをコピペ入力
 ┌────────────────────────
-│ この料理写真のボリューム感を強調。暖色系。縦9:16
+│ この料理写真を縦9:16にリフレーム。ボリューム感を強調。元の色味を維持
 └────────────────────────
-
-プロンプトB（ダイナープレート感）:
-┌────────────────────────
-│ この料理写真を縦9:16。アメリカンダイナーの鉄板プレートに盛り付けた雰囲気に。彩度UP。湯気を追加
-└────────────────────────
-
-プロンプトC（ガッツリ飯・迫力）:
-┌────────────────────────
-│ この料理写真を縦9:16。真正面からのアングルでボリューム感を最大化。背景を暗くして料理を際立たせる
-└────────────────────────
-→ 3枚分を繰り返す
 
 【STEP 3: DaVinci Resolveで仕上げる】
 ツール: DaVinci Resolve → プロジェクト「NIKI_メイン」を複製して開く
 やること:
-1. 動画を差し替え → STEP2の加工済み写真のうちベスト1枚を先頭にドラッグ（Ken Burns効果がテンプレで適用される）
-2. 画像3枚を差し替え → 残りの写真を後半にドラッグ
+1. 動画を差し替え → STEP1のベスト1枚を先頭にドラッグ（Ken Burns効果がテンプレで適用される）
+2. 画像3枚を差し替え → 残りのProsnap写真を後半にドラッグ
 3. フック文テキストを差し替え → この投稿のフック文をコピペ
 4. BGMはテンプレ固定（変更不要）
 5. 書き出し → 1080x1920, MP4`,
 
-      '空間・映えドリンク': `【STEP 1: 写真を選ぶ（2種類）】
-内装: 02_Photos/02_Interior/ からネオンサイン・カウンター写真を1枚
-ドリンク: 02_Photos/10_Menu_Photos_Edit/6_Dersert_Drink/ からドリンク写真を1枚
+      '空間・映えドリンク': `【STEP 1: 写真を選ぶ】◎ Prosnap素材を最優先で使う
+ドリンク: 02_Photos/09_Prosnap/（◎ 087-096 — ビール・ドリンク系。090のビールが映える）
+デザート: 02_Photos/09_Prosnap/（◎ 097-113 — ブラウニー・チーズケーキ・アップルパイ・テーブル俯瞰。113の俯瞰が最強）
+内装: 02_Photos/02_Interior/（17枚）からネオンサイン・カウンター写真を1枚
+→ ドリンク＋デザートはProsnapから、空間は内装フォルダから
 
-【STEP 2: 内装画像を加工する】
+【STEP 2: 画像を加工する（必要な場合のみ）】
 ツール: Google AI Studio → ImageFX
-やること: 内装写真をアップロード → 下の3つから1つ選んでコピペ入力
-
-プロンプトA（NYダイナー・クール）:
+やること: 内装写真のみ縦リフレームが必要な場合 → 下のプロンプトをコピペ入力
 ┌────────────────────────
-│ この内装写真をNYダイナー風に強調。コントラスト強め、青みがかった影。縦9:16
+│ この内装写真を縦9:16。ネオンサインの光を強調してナイトシーンの雰囲気に
 └────────────────────────
+→ Prosnapのドリンク・デザートはそのまま使えるクオリティ
 
-プロンプトB（ネオン・ナイト）:
-┌────────────────────────
-│ この内装写真を縦9:16。ネオンサインの光を強調してナイトシーンの雰囲気に。赤と青のネオン反射
-└────────────────────────
-
-プロンプトC（レトロアメリカン）:
-┌────────────────────────
-│ この内装写真を縦9:16。50sアメリカンダイナーのレトロ感を強調。暖色のヴィンテージフィルター
-└────────────────────────
-→ 生成された画像をダウンロード保存
-
-【STEP 3: ドリンク画像を加工する】
-ツール: Google AI Studio → ImageFX
-やること: ドリンク写真をアップロード → 下の3つから1つ選んでコピペ入力
-
-プロンプトA（映え・彩度UP）:
-┌────────────────────────
-│ このドリンク写真を映え加工。彩度UP。縦9:16
-└────────────────────────
-
-プロンプトB（クリームソーダ・ポップ）:
-┌────────────────────────
-│ このドリンク写真を縦9:16。ポップで鮮やかな色味に。背景にネオンのボケ感を追加
-└────────────────────────
-
-プロンプトC（大人のバードリンク）:
-┌────────────────────────
-│ このドリンク写真を縦9:16。バーカウンターに置かれた雰囲気に。氷の透明感と光の反射を強調
-└────────────────────────
-→ 生成された画像をダウンロード保存
-
-【STEP 4: 動画にする】
+【STEP 3: 動画にする】
 ツール: Google AI Studio → Veo 3.1（1日3回まで）
-やること: STEP2の内装画像をアップロード → 下のプロンプトをコピペ入力
+やること: Prosnapのデザート俯瞰（113）をアップロード → 下のプロンプトをコピペ入力
 ┌────────────────────────
-│ ネオンサインが光るアメリカンダイナー。カメラがゆっくりパンして店内を映す。9:16縦。3秒
+│ カフェテーブルに並ぶデザートとドリンク。カメラがゆっくり上からパンダウン。9:16縦。3秒
 └────────────────────────
-Veo使えない日 → DaVinci Resolveのダイナミックズームを使うのでSTEP4はスキップ
+Veo使えない日 → DaVinci Resolveのダイナミックズームを使うのでSTEP3はスキップ
 
-【STEP 5: DaVinci Resolveで仕上げる】
+【STEP 4: DaVinci Resolveで仕上げる】
 ツール: DaVinci Resolve → プロジェクト「NIKI_メイン」を複製して開く
 やること:
-1. 動画を差し替え → STEP4の動画（またはSTEP2の画像）を先頭にドラッグ
-2. 画像3枚を差し替え → STEP2内装画像・STEP3ドリンク画像＋別カットを後半にドラッグ
+1. 動画を差し替え → STEP3の動画（またはSTEP1のベスト画像）を先頭にドラッグ
+2. 画像3枚を差し替え → Prosnapドリンク・デザート＋内装を後半にドラッグ
 3. フック文テキストを差し替え → この投稿のフック文をコピペ
 4. BGMはテンプレ固定（変更不要）
 5. 書き出し → 1080x1920, MP4`,
@@ -733,8 +869,8 @@ async function setupDatabaseProperties() {
   console.log('📋 Content DB プロパティをセットアップ中...');
 
   try {
-    const db = await notion.databases.retrieve({ database_id: CONTENT_DB });
-    const existingProps = Object.keys(db.properties);
+    const dsProps = await fetchDataSourceProperties(CONTENT_DATA_SOURCE_ID);
+    const existingProps = Object.keys(dsProps);
 
     // 追加が必要なプロパティ定義
     const requiredProps = {
@@ -797,10 +933,129 @@ async function setupDatabaseProperties() {
   }
 }
 
-// ─── キャプション生成（季節プレースホルダ置換） ─────────────────
+// ─── クライアント別 人格設定 ──────────────────────────────────────
 
-function generateCaption(config, theme, month) {
-  const template = config.captionTemplates?.[theme] || '';
+const CLIENT_PERSONAS = {
+  'Mz cafe': {
+    voice: '大人の隠れ家の店主',
+    firstPerson: 'うちの',
+    tone: '静かな語り口。体言止め多め。余韻を残す。「〜なんです」「〜だと思う」。押しつけない',
+    world: '夜カフェ × 洋風酒場。間接照明、木のぬくもり、大人の時間。高崎駅東口 徒歩5分',
+    target: '20〜40代、仕事帰りにふらっと寄りたい人、デート・女子会',
+    senses: '視覚（とろけるチーズ、間接照明）、嗅覚（焼きたての香り）、触覚（温かさ）',
+    ctaTone: 'さりげなく。「気が向いたら」「覚えておいて」',
+    banned: '「激安」「爆盛り」「映え」などの若者ノリ。テンション高い表現。煽り。「いかがでしょうか」',
+    storeInfo: '📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）',
+    menuHighlights: 'マルゲリータピザ、カルボナーラ、ゴルゴンゾーラペンネ、ハニートースト、カレートースト、スモークサーモン、クラフトビール',
+  },
+  'Niki★DINER': {
+    voice: 'アメリカンダイナーの陽気な兄貴',
+    firstPerson: 'うちの',
+    tone: 'テンポが速い。断定調。「〜だから。」「〜してみて。」勢いがある。ストレートに語る',
+    world: 'NYダイナー × 上州牛。ネオン、鉄板の音、肉汁、クラフト感。高崎モントレー5F（駅直結）',
+    target: '10〜30代、ガッツリ食べたい人、バーガー好き、駅ナカで探してる人',
+    senses: '聴覚（ジュッという音）、視覚（肉汁の断面）、味覚（ガツンとくる旨さ）',
+    ctaTone: 'ストレート。「食べに来て」「保存して」「友達に教えて」',
+    banned: '上品すぎる表現。回りくどい説明。「いかがでしょうか」系。煽り・恐怖訴求',
+    storeInfo: '📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30',
+    menuHighlights: '上州牛スマッシュバーガー、ロコモコ、NYチキンオーバーライス、バッファローウイング、クリームソーダ、自家製ベーコン',
+  },
+};
+
+// ─── 過去キャプション取得（重複回避用） ──────────────────────────
+
+async function fetchPastCaptions(clientName, limit = 10) {
+  try {
+    const res = await queryContentDataSource({
+      filter: {
+        and: [
+          { property: 'クライアント', select: { equals: clientName } },
+          { property: 'キャプション', rich_text: { is_not_empty: true } },
+        ],
+      },
+      sorts: [{ property: '投稿日', direction: 'descending' }],
+      page_size: limit,
+    });
+    return res.results.map(p => {
+      const cap = p.properties['キャプション']?.rich_text?.[0]?.plain_text || '';
+      const hook = p.properties['フック（冒頭3秒）']?.rich_text?.[0]?.plain_text || '';
+      return { hook, caption: cap.substring(0, 150) };
+    }).filter(x => x.caption);
+  } catch {
+    return [];
+  }
+}
+
+// ─── Gemini API でキャプション・フック・CTAを動的生成 ────────────
+
+async function generateContentWithAI(clientName, theme, season, pastCaptions) {
+  const persona = CLIENT_PERSONAS[clientName];
+  if (!persona) return null;
+
+  const pastList = pastCaptions.length > 0
+    ? pastCaptions.map((p, i) => `  ${i + 1}. フック:「${p.hook}」/ キャプション冒頭:「${p.caption}」`).join('\n')
+    : '  （過去データなし）';
+
+  const prompt = `あなたは「${persona.voice}」として、飲食店のInstagramリール用テキストを書きます。
+
+## 店舗情報
+- 店名: ${clientName}
+- 世界観: ${persona.world}
+- メニュー例: ${persona.menuHighlights}
+- 店舗情報: ${persona.storeInfo}
+
+## 人格・トーン
+- 一人称: 「${persona.firstPerson}」
+- 口調: ${persona.tone}
+- 五感の軸: ${persona.senses}
+- CTA: ${persona.ctaTone}
+- 禁止: ${persona.banned}
+
+## 今回の投稿
+- テーマ: ${theme}
+- 季節: ${season}
+
+## 過去の投稿（これらと被らない内容にすること）
+${pastList}
+
+## 出力ルール
+- フック: スクロールを止める1文（20文字以内）。食欲か好奇心を刺激する。挨拶不要、いきなり核心
+- キャプション: 150〜250文字。短文・体言止め・口語体。最後に店舗情報（📍🕐）を含める
+- CTA: 行動喚起の1文（30文字以内）。「保存」「シェア」「来店」のいずれかに誘導
+
+## 出力形式（JSON）
+必ず以下のJSON形式で出力してください。JSON以外のテキストは一切不要です。
+{"hook": "...", "caption": "...", "cta": "..."}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: { responseMimeType: 'application/json', temperature: 0.9 },
+    });
+    const text = response.text?.trim() || '';
+    const parsed = JSON.parse(text);
+    if (parsed.hook && parsed.caption && parsed.cta) {
+      return parsed;
+    }
+    return null;
+  } catch (e) {
+    console.log(`    ⚠ AI生成失敗（フォールバック使用）: ${e.message}`);
+    return null;
+  }
+}
+
+// ─── フォールバック: 固定テンプレから選択 ─────────────────────────
+
+function pickVariant(variants, theme, month) {
+  const arr = variants?.[theme];
+  if (!arr || arr.length === 0) return null;
+  return arr[month % arr.length];
+}
+
+function generateCaptionFallback(config, theme, month) {
+  const template = pickVariant(config.captionVariants, theme, month)
+    || config.captionTemplates?.[theme] || '';
   const season = SEASON_MAP[month] || '';
   return template.replace(/\{season\}/g, season);
 }
@@ -835,9 +1090,13 @@ function _pickFromPool(basePath, category, pool) {
 function _pickFromNikiDir(basePath, dirName, info) {
   const key = `${basePath}:${dirName}`;
   if (!_usedMaterials[key]) _usedMaterials[key] = 0;
-  const fileNum = (_usedMaterials[key] % info.count) + 1;
+  const offset = _usedMaterials[key] % info.count;
   _usedMaterials[key]++;
-  return fileNum;
+  if (info.startNum != null) {
+    const num = info.startNum + offset;
+    return { fileNum: num, fileName: `260226_nikidiner_${String(num).padStart(3, '0')}.jpg` };
+  }
+  return { fileNum: offset + 1, fileName: null };
 }
 
 /** M'z cafe: サブフォルダ内の実ファイル名をローテーションで選択 */
@@ -897,16 +1156,24 @@ function selectMaterials(config, theme, postIndex) {
         const dirName = mapping.nikiImages[i];
         const info = config.nikiMaterialCatalog[dirName];
         if (!info) continue;
-        const fileNum = _pickFromNikiDir(config.materialBasePath, dirName, info);
-        lines.push(`  ${i + 1}. ${info.dir}/ の${fileNum}番目`);
+        const picked = _pickFromNikiDir(config.materialBasePath, dirName, info);
+        if (picked.fileName) {
+          lines.push(`  ${i + 1}. ${info.dir}/${picked.fileName}`);
+        } else {
+          lines.push(`  ${i + 1}. ${info.dir}/ の${picked.fileNum}番目`);
+        }
       }
     }
     if (mapping.nikiVideo) {
       const info = config.nikiMaterialCatalog[mapping.nikiVideo];
       if (info) {
-        const fileNum = _pickFromNikiDir(config.materialBasePath, mapping.nikiVideo, info);
+        const picked = _pickFromNikiDir(config.materialBasePath, mapping.nikiVideo, info);
         lines.push('── 動画（1本）──');
-        lines.push(`  ${info.dir}/ の${fileNum}番目`);
+        if (picked.fileName) {
+          lines.push(`  ${info.dir}/${picked.fileName}`);
+        } else {
+          lines.push(`  ${info.dir}/ の${picked.fileNum}番目`);
+        }
       }
     }
   }
@@ -916,21 +1183,37 @@ function selectMaterials(config, theme, postIndex) {
 
 // ─── Notion にページ作成 ─────────────────────────────────────────
 
-async function createPostEntry(config, clientName, postIndex, date, month) {
+async function createPostEntry(config, clientName, postIndex, date, month, pastCaptions) {
   const theme = config.themeRotation[postIndex % config.themeRotation.length];
-  const hook = (config.hookByTheme && config.hookByTheme[theme])
-    ? config.hookByTheme[theme]
-    : config.hookTemplates[postIndex % config.hookTemplates.length];
-  const cta = config.ctaTemplates[postIndex % config.ctaTemplates.length];
   const hashtags = getHashtagSet(config, postIndex);
   const bgm = config.bgmOptions[postIndex % config.bgmOptions.length];
   const time = config.preferredTimes[postIndex % config.preferredTimes.length];
   const season = SEASON_MAP[month] || '';
 
-  // 新規追加: キャプション自動生成
-  const caption = generateCaption(config, theme, month);
+  // AI でフック・キャプション・CTAを動的生成（失敗時はフォールバック）
+  const aiContent = await generateContentWithAI(clientName, theme, season, pastCaptions || []);
 
-  // 新規追加: コピペ用テキスト（キャプション + ハッシュタグ結合済み）
+  let hook, caption, cta;
+  if (aiContent) {
+    hook = aiContent.hook;
+    caption = aiContent.caption;
+    cta = aiContent.cta;
+    console.log(`    🤖 AI生成: フック「${hook}」`);
+  } else {
+    hook = pickVariant(config.hookByThemeVariants, theme, month)
+      || (config.hookByTheme && config.hookByTheme[theme])
+      || config.hookTemplates[postIndex % config.hookTemplates.length];
+    caption = generateCaptionFallback(config, theme, month);
+    cta = pickVariant(config.ctaByThemeVariants, theme, month)
+      || config.ctaTemplates[postIndex % config.ctaTemplates.length];
+    console.log(`    📝 フォールバック: テンプレ使用`);
+  }
+
+  // 過去キャプションリストに追加（同一バッチ内の重複回避）
+  if (pastCaptions) {
+    pastCaptions.push({ hook, caption: caption.substring(0, 150) });
+  }
+
   const copyPasteText = generateCopyPasteText(caption, hashtags);
 
   // 新規追加: 具体的な編集手順
@@ -1043,16 +1326,21 @@ async function main() {
 
     console.log(`📱 ${clientName}（${filteredDates.length}本）`);
 
+    // 過去キャプションを取得（重複回避用、同一バッチ内の生成分も追記される）
+    const pastCaptions = await fetchPastCaptions(clientName, 10);
+    console.log(`  📚 過去キャプション ${pastCaptions.length}件を参照`);
+
     for (let i = 0; i < filteredDates.length; i++) {
       const originalIdx = dates.indexOf(filteredDates[i]);
-      const success = await createPostEntry(config, clientName, originalIdx, filteredDates[i], month);
+      const success = await createPostEntry(config, clientName, originalIdx, filteredDates[i], month, pastCaptions);
       if (success) {
         totalCreated++;
       } else {
         totalFailed++;
       }
 
-      await new Promise(r => setTimeout(r, 350));
+      // AI API レート制限回避: 1.5秒待機
+      await new Promise(r => setTimeout(r, 1500));
     }
 
     console.log('');

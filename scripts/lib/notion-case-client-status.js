@@ -99,8 +99,77 @@ async function fetchCaseClientStatuses(notion, opts = {}) {
   }
 }
 
+/**
+ * 期限が近い案件（次回アクション＋期限）を取得する
+ * @param {import('@notionhq/client').Client} notion
+ * @param {{ databaseId?: string, withinDays?: number }} [opts]
+ * @returns {Promise<Array<{ client: string, caseName: string, action: string, deadline: string }>>}
+ */
+async function fetchUpcomingDeadlines(notion, opts = {}) {
+  const databaseId = opts.databaseId || process.env.NOTION_CASE_DB_ID || CASE_DB_ID;
+  const withinDays = opts.withinDays ?? 3;
+  const alerts = [];
+
+  if (!process.env.NOTION_TOKEN) return alerts;
+
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const limitDate = new Date(today);
+    limitDate.setDate(limitDate.getDate() + withinDays);
+
+    const all = [];
+    let cursor;
+    do {
+      const response = await notion.databases.query({
+        database_id: databaseId,
+        start_cursor: cursor,
+        page_size: 100,
+      });
+      all.push(...response.results);
+      cursor = response.has_more ? response.next_cursor : undefined;
+    } while (cursor);
+
+    for (const page of all) {
+      const props = page.properties || {};
+      const deadlineProp = props['期限'];
+      if (!deadlineProp?.date?.start) continue;
+
+      const deadlineDate = new Date(deadlineProp.date.start);
+      if (deadlineDate > limitDate) continue;
+
+      const action = props['次回アクション']?.rich_text?.[0]?.plain_text || '';
+      if (!action) continue;
+
+      const clientName = notionClientNameFromPage(props);
+      const briefKey = briefKeyFromNotionClient(clientName) || clientName || '不明';
+
+      const titleProp = props['案件名'] || props['名前'] || props['title'];
+      const caseName = titleProp?.title?.[0]?.plain_text || '';
+
+      const mm = deadlineDate.getMonth() + 1;
+      const dd = deadlineDate.getDate();
+      const isPast = deadlineDate < today;
+
+      alerts.push({
+        client: briefKey,
+        caseName,
+        action,
+        deadline: `${mm}/${dd}`,
+        isPast,
+      });
+    }
+
+    alerts.sort((a, b) => (a.deadline > b.deadline ? 1 : -1));
+    return alerts;
+  } catch {
+    return [];
+  }
+}
+
 module.exports = {
   BRIEF_CLIENT_ORDER,
   CASE_DB_ID,
   fetchCaseClientStatuses,
+  fetchUpcomingDeadlines,
 };

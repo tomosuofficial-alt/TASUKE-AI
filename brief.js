@@ -5,13 +5,13 @@ const https = require('https');
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 const rss = new RSSParser();
-const { fetchCaseClientStatuses, BRIEF_CLIENT_ORDER: CLIENTS } = require('./scripts/lib/notion-case-client-status.js');
+const { fetchCaseClientStatuses, fetchUpcomingDeadlines, BRIEF_CLIENT_ORDER: CLIENTS } = require('./scripts/lib/notion-case-client-status.js');
 
 const DAILY_LOG_DB = 'b16ea51c-cd90-470f-8072-6eb4a6536da3';
 const RSS_FEEDS = [
   'https://www.ssnp.co.jp/feed/',
-  'https://ainow.ai/feed/',
-  'https://www.businessinsider.jp/feed/index.xml',
+  'https://gigazine.net/news/rss_2.0/',
+  'https://techcrunch.com/category/artificial-intelligence/feed/',
 ];
 
 const AI_MESSAGES = [
@@ -144,8 +144,8 @@ async function fetchClientStatuses() {
 
 const RSS_LABELS = {
   'https://www.ssnp.co.jp/feed/': '食品産業新聞',
-  'https://ainow.ai/feed/': 'AINOW（AI）',
-  'https://www.businessinsider.jp/feed/index.xml': 'Business Insider',
+  'https://gigazine.net/news/rss_2.0/': 'Gigazine',
+  'https://techcrunch.com/category/artificial-intelligence/feed/': 'TechCrunch AI',
 };
 
 async function fetchTrends() {
@@ -176,28 +176,28 @@ async function generateBrief() {
 
   console.log(`[${dateStr}] 朝次ブリーフ生成開始...`);
 
-  const [statuses, trends, smaregiData] = await Promise.all([
+  const [statuses, trends, smaregiData, deadlines] = await Promise.all([
     fetchClientStatuses(),
     fetchTrends(),
     fetchSmaregiSales(),
+    fetchUpcomingDeadlines(notion),
   ]);
 
   const clientLines = CLIENTS.map((name) => `  • ${name} … ${statuses[name]}`).join('\n');
+  const deadlineLines = deadlines.length > 0
+    ? '\n\n⚠️ 期限が近い案件:\n' + deadlines.map((d) => {
+      const prefix = d.isPast ? '🔴 期限超過' : '⚠️ 期限';
+      return `  ${prefix} ${d.deadline}: ${d.client} — ${d.action}`;
+    }).join('\n')
+    : '';
   const trendLines = trends.map((t) => `  • ${t}`).join('\n');
   const aiMessage = getAIMessage();
 
   const yesterdayStr = ymdToSlash(yesterdayKeyTokyo(today));
 
-  // Slack ①②と重複しないよう、③はニュース＋ひとことだけ（読みやすさ優先）
-  const slackText = `【③ ニュース＆今日のひとこと】#daily-command 朝7:00｜${dateHuman}
-
-────────────
-【ニュースピック】RSSから各1件ずつ
+  const slackText = `③ ニュース｜${dateHuman}
 ${trendLines}
-
-────────────
-【今日のひとこと】
-  ${aiMessage}`;
+💬 ${aiMessage}`;
 
   // Notion デイリーログには、その日のスナップショット全文を残す
   const notionArchiveText = `【朝のアーカイブ・全文】${dateHuman}
@@ -205,7 +205,7 @@ ${trendLines}
 
 ────────────
 【クライアント案件のステータス】Notion案件管理
-${clientLines}
+${clientLines}${deadlineLines}
 
 ────────────
 【昨日の店舗売上】よいどころ千福・スマレジ（集計日 ${yesterdayStr}）

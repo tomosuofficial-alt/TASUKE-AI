@@ -27,12 +27,14 @@ async function fetchClientStatuses() {
 }
 
 function formatTaskSection(statuses) {
-  const lines = CLIENTS.map((name) => `  • ${name} … ${statuses[name]}`).join('\n');
-  return [
-    '【クライアント案件のいま】',
-    '  Notion「案件管理」DBのステータスです（進捗の目安）。',
-    lines,
-  ].join('\n');
+  const entries = CLIENTS.map((name) => ({ name, st: statuses[name] }));
+  const allEmpty = entries.every((e) => !e.st || e.st === '情報なし');
+  if (allEmpty) return null;
+  const lines = entries
+    .filter((e) => e.st && e.st !== '情報なし')
+    .map((e) => `  • ${e.name} … ${e.st}`)
+    .join('\n');
+  return `【案件ステータス】\n${lines}`;
 }
 
 async function fetchInstagramContentToday() {
@@ -100,6 +102,8 @@ async function fetchOptionalScheduleDb() {
 /**
  * @param {{ mode?: 'scheduled' | 'interactive' }} opts
  */
+const LINE_INBOX_DISPLAY_MAX = 5;
+
 async function buildMorningDailySummaryText(opts = {}) {
   const mode = opts.mode || 'scheduled';
   const dateLine = dateSlashWithWeekdayTokyo();
@@ -113,38 +117,37 @@ async function buildMorningDailySummaryText(opts = {}) {
   const header =
     mode === 'interactive'
       ? `おはようございます ☀️  ${dateLine}`
-      : `【① 今日の予定・案件の状況】#daily-command 朝7:00｜${dateLine}`;
+      : `① 予定・案件｜${dateLine}`;
 
-  const parts = [
-    header,
-    '',
-    '────────────',
-    '【今日の予定】Instagramの投稿（コンテンツDBで「投稿日＝今日」）',
-    ...contentToday.lines,
-    '',
-  ];
+  const parts = [header];
+
+  const hasContent = contentToday.lines.length > 0
+    && !contentToday.lines[0].includes('投稿予定はありません');
+  if (hasContent) {
+    parts.push('', '【Instagram】', ...contentToday.lines);
+  }
 
   if (scheduleExtra) {
-    parts.push(
-      '【今日の予定】その他（Notionの予定DB・任意設定）',
-      ...scheduleExtra,
-      '',
-    );
+    const hasSchedule = !scheduleExtra[0]?.includes('予定はありません');
+    if (hasSchedule) {
+      parts.push('', '【予定】', ...scheduleExtra);
+    }
   }
 
-  if (lineInbox) {
-    const win = process.env.NOTION_LINE_INBOX_WINDOW_DAYS || '7';
-    parts.push(
-      '────────────',
-      `【業務メモ（日付が直近${win}日以内）】`,
-      ...(lineInbox.lines.length
-        ? lineInbox.lines
-        : ['  （該当行はまだありません）']),
-      '',
-    );
+  if (lineInbox && lineInbox.lines.length > 0) {
+    const total = lineInbox.lines.length;
+    const shown = lineInbox.lines.slice(0, LINE_INBOX_DISPLAY_MAX);
+    const suffix = total > LINE_INBOX_DISPLAY_MAX
+      ? `  … 他 ${total - LINE_INBOX_DISPLAY_MAX} 件（Notionで確認）`
+      : '';
+    parts.push('', `【業務メモ】直近${process.env.NOTION_LINE_INBOX_WINDOW_DAYS || '7'}日・${total}件`, ...shown);
+    if (suffix) parts.push(suffix);
   }
 
-  parts.push('────────────', formatTaskSection(statuses));
+  const taskSection = formatTaskSection(statuses);
+  if (taskSection) {
+    parts.push('', taskSection);
+  }
 
   return parts.join('\n');
 }

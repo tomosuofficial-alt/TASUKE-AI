@@ -1,6 +1,8 @@
 node_modules/
 .env
 .claude/settings.local.json
+.claude/plans/
+.cursor/
 .freee-token.json
 receipt-import-state.json
 .DS_Store
@@ -13,6 +15,7 @@ docs/pdca-abc/latest.md
 
 # LINE 書き出しの .txt はコミットしない（README だけ例外）
 line-imports/*.txt
+line-imports/*.jpg
 line-imports/**/*.txt
 !line-imports/README.txt
 line-imports/.ingest-state.json

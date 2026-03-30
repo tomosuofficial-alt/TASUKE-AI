@@ -44,150 +44,44 @@ const TO_DATE = toDateIdx !== -1 ? args[toDateIdx + 1] : null;
 const REGENERATE = args.includes('--regenerate');
 
 // ─── 素材マッピング（content-calendar.jsと同期） ─────────────────
+// 素材選定は Notion「素材チェックリスト」が Single Source of Truth（content-calendar.js が生成）
+// ここには basePath（チェックリストの相対パス解決用）と outputDir（生成画像の保存先）のみ定義
 const MATERIAL_CONFIG = {
   'Mz cafe': {
     basePath: '/Volumes/Home_Mac_SSD/01_Projects/Mz_cafe/03_Material',
     outputDir: '/Volumes/Home_Mac_SSD/01_Projects/Mz_cafe/03_Material/02_Photos/04_AI_Generated',
-    // 01_Food 配下をカテゴリ別サブフォルダで管理（content-calendar.js の mzMaterialCatalog と同期）
-    mzCatalog: {
-      'ピザ（看板）':        { dir: '02_Photos/01_Food/1_Pizza' },
-      'カルボナーラ':        { dir: '02_Photos/01_Food/2_Carbonara' },
-      'ゴルゴンゾーラペンネ': { dir: '02_Photos/01_Food/3_Gorgonzola_Penne' },
-      'ハニートースト':      { dir: '02_Photos/01_Food/4_Honey_Toast' },
-      'カレートースト':      { dir: '02_Photos/01_Food/5_Curry_Toast' },
-      'スモークサーモン':    { dir: '02_Photos/01_Food/6_Smoked_Salmon' },
-      '調理シーン':         { dir: '02_Photos/01_Food/7_Cooking_Scene' },
-      '内装':              { dir: '02_Photos/02_Interior' },
-    },
-    themeMaterialMap: {
-      '人気No.1メニュー':     { images: ['ピザ（看板）', 'スモークサーモン', '調理シーン'] },
-      '新作・限定メニュー':    { images: ['カレートースト', 'ハニートースト', 'ピザ（看板）'] },
-      '調理シーン・盛付け':    { images: ['ゴルゴンゾーラペンネ', '調理シーン', 'ピザ（看板）'] },
-      'ドリンク・スイーツ':    { images: ['ハニートースト', 'カレートースト', 'スモークサーモン'] },
-      '雰囲気・空間':        { images: ['内装', 'ピザ（看板）', 'カルボナーラ'] },
-      'お客様の注文風景':     { images: ['スモークサーモン', 'カルボナーラ', 'ハニートースト'] },
-    },
   },
   'Niki★DINER': {
     basePath: '/Volumes/Home_Mac_SSD/01_Projects/Niki_Diner/03_Material',
     outputDir: '/Volumes/Home_Mac_SSD/01_Projects/Niki_Diner/03_Material/02_Photos/04_AI_Generated',
-    nikiCatalog: {
-      'スマッシュバーガー編集済': { dir: '02_Photos/10_Menu_Photos_Edit/1_Smash_Burgers' },
-      'バーガー編集済':     { dir: '02_Photos/10_Menu_Photos_Edit/2_Niki_burgers' },
-      'サンドイッチ編集済':  { dir: '02_Photos/10_Menu_Photos_Edit/3_Sandwiches' },
-      'ライスプレート編集済': { dir: '02_Photos/10_Menu_Photos_Edit/4_Riceplate_Salad' },
-      'サイド編集済':       { dir: '02_Photos/10_Menu_Photos_Edit/5_Side' },
-      'ドリンク・デザート':  { dir: '02_Photos/10_Menu_Photos_Edit/6_Dersert_Drink' },
-      'セットメニュー':     { dir: '02_Photos/10_Menu_Photos_Edit/7_Set' },
-      'エクストラ':        { dir: '02_Photos/10_Menu_Photos_Edit/8_Extra' },
-      '内装':             { dir: '02_Photos/02_Interior' },
-      'ピープルスナップ':   { dir: '02_Photos/06_People_Snap' },
-      'キッチンシーン':     { dir: '02_Photos/05_Kitchen_Scene' },
-      '料理Raw':          { dir: '02_Photos/03_Food_Raw' },
-    },
-    themeMaterialMap: {
-      '看板バーガー':           { nikiImages: ['スマッシュバーガー編集済', 'キッチンシーン', 'バーガー編集済'] },
-      '調理ライブ':            { nikiImages: ['キッチンシーン', 'スマッシュバーガー編集済', '料理Raw'] },
-      'ライスプレート・夜ダイナー': { nikiImages: ['ライスプレート編集済', 'サイド編集済', 'ドリンク・デザート'] },
-      '空間・映えドリンク':      { nikiImages: ['内装', 'ドリンク・デザート', 'ピープルスナップ'] },
-    },
   },
 };
 
-// （プロンプトはprocessImage内のRETOUCH_PROMPTに統一。テーマ別の差は不要）
+// ─── Notion「素材チェックリスト」から画像パスを抽出 ─────────────
+// content-calendar.js が Notion に書いた指示をそのまま使う（Single Source of Truth）
+function parseChecklistForImages(checklist, basePath) {
+  if (!checklist) return [];
+  const lines = checklist.split('\n');
+  const imagePaths = [];
+  let inImageSection = false;
 
-// ─── 素材使用カウンター（同一セッションでの重複回避） ─────────────
-const usageCounter = {};
+  for (const line of lines) {
+    if (line.includes('── 画像')) { inImageSection = true; continue; }
+    if (line.includes('── 動画')) { inImageSection = false; continue; }
+    if (!inImageSection) continue;
 
-function getNextIndex(key, totalCount) {
-  if (!usageCounter[key]) usageCounter[key] = 0;
-  const idx = usageCounter[key] % totalCount;
-  usageCounter[key]++;
-  return idx;
-}
-
-// ─── キャプション解析 → 素材カテゴリの優先度を動的に決定 ────────
-const NIKI_CAPTION_KEYWORD_MAP = [
-  { keywords: ['スマッシュ', '鉄板', '押し付け', 'パティ', '肉汁'], category: 'スマッシュバーガー編集済' },
-  { keywords: ['調理', '手作り', '工程', 'ソース', 'ベーコン', '燻製', 'キッチン'], category: 'キッチンシーン' },
-  { keywords: ['ロコモコ', 'ライス', 'チキンオーバーライス', 'ガッツリ'], category: 'ライスプレート編集済' },
-  { keywords: ['サンドイッチ', 'BLT', 'クラブ'], category: 'サンドイッチ編集済' },
-  { keywords: ['サイド', 'ウイング', 'ポテト', 'バッファロー'], category: 'サイド編集済' },
-  { keywords: ['ドリンク', 'クリームソーダ', 'シェイク', 'アップルパイ', 'デザート'], category: 'ドリンク・デザート' },
-  { keywords: ['ネオン', '空間', 'ダイナー', 'NY', 'アメリカ', '内装'], category: '内装' },
-  { keywords: ['バーガー', 'ハンバーガー', 'クラフト', 'グルメバーガー'], category: 'バーガー編集済' },
-];
-
-const MZ_CAPTION_KEYWORD_MAP = [
-  { keywords: ['マルゲリータ', 'ピザ'], category: 'ピザ（看板）' },
-  { keywords: ['ゴルゴンゾーラ', 'ペンネ'], category: 'ゴルゴンゾーラペンネ' },
-  { keywords: ['カルボナーラ'], category: 'カルボナーラ' },
-  { keywords: ['ハニートースト', 'アフォガート', 'ハニー'], category: 'ハニートースト' },
-  { keywords: ['カレートースト', 'カレー'], category: 'カレートースト' },
-  { keywords: ['サーモン', 'カルパッチョ', '前菜'], category: 'スモークサーモン' },
-  { keywords: ['調理', '仕上げ', 'キッチン', 'とろける', '盛付', 'チーズが'], category: '調理シーン' },
-  { keywords: ['空間', '内装', '照明', '居心地', '間接照明'], category: '内装' },
-  { keywords: ['パスタ'], category: 'カルボナーラ' },
-  { keywords: ['トースト'], category: 'ハニートースト' },
-  { keywords: ['ビール', 'ワイン', 'サワー', '一杯', 'クラフトビール'], category: 'ハニートースト' },
-];
-
-function analyzeCaptionForCategories(caption, hook, keywordMap) {
-  const text = `${hook || ''} ${caption || ''}`;
-  const scored = [];
-  for (const entry of keywordMap) {
-    let hits = 0;
-    for (const kw of entry.keywords) {
-      if (text.includes(kw)) hits++;
-    }
-    if (hits > 0) scored.push({ category: entry.category, score: hits });
-  }
-  scored.sort((a, b) => b.score - a.score);
-  return scored.map(s => s.category);
-}
-
-// ─── M'z / Niki 共通: フォルダカタログ + キャプション解析で画像パスを取得 ──
-function pickFolderCatalogImages(config, theme, caption, hook) {
-  const catalog = config.mzCatalog || config.nikiCatalog;
-  if (!catalog) return [];
-  const mapping = config.themeMaterialMap[theme];
-  const themeCats = mapping?.nikiImages || mapping?.images;
-  if (!themeCats?.length) return [];
-
-  const keywordMap = config.mzCatalog ? MZ_CAPTION_KEYWORD_MAP : NIKI_CAPTION_KEYWORD_MAP;
-  const captionCategories = analyzeCaptionForCategories(caption, hook, keywordMap);
-
-  const mergedCategories = [];
-  const seen = new Set();
-  for (const cat of captionCategories) {
-    if (!seen.has(cat) && catalog[cat]) {
-      mergedCategories.push(cat);
-      seen.add(cat);
+    const match = line.match(/\d+\.\s+(.+)/);
+    if (!match) continue;
+    const relPath = match[1].trim();
+    if (!relPath) continue;
+    const fullPath = path.join(basePath, relPath);
+    if (fs.existsSync(fullPath)) {
+      imagePaths.push({ filePath: fullPath, category: path.basename(path.dirname(relPath)), num: path.basename(relPath) });
+    } else {
+      console.log(`    ⚠ チェックリストのファイルが見つかりません: ${fullPath}`);
     }
   }
-  for (const cat of themeCats) {
-    if (!seen.has(cat) && catalog[cat]) {
-      mergedCategories.push(cat);
-      seen.add(cat);
-    }
-  }
-
-  const clientTag = config.mzCatalog ? 'mz' : 'niki';
-  const paths = [];
-  for (const category of mergedCategories) {
-    if (paths.length >= 3) break;
-    const catInfo = catalog[category];
-    if (!catInfo?.dir) continue;
-    const dirPath = path.join(config.basePath, catInfo.dir);
-    if (!fs.existsSync(dirPath)) continue;
-    const files = fs.readdirSync(dirPath).filter(f => /\.(jpg|jpeg|png)$/i.test(f));
-    if (files.length === 0) continue;
-    files.sort();
-    const idx = getNextIndex(`${clientTag}:${category}`, files.length);
-    const fileName = files[idx];
-    paths.push({ filePath: path.join(dirPath, fileName), category, num: fileName });
-  }
-  return paths;
+  return imagePaths;
 }
 
 // ─── 画像の向きを判定 ────────────────────────────────────────────
@@ -224,6 +118,8 @@ CRITICAL — SCALE & REALISM:
 - Keep believable physical scale: the dish must look like a normal portion on a real table. Plate, glass, cutlery, and table edge must stay in proportion. NEVER make the food look comically large or "hero macro" vs. the table.
 - Preserve the exact scene: same dishes, same background, same table. Do NOT add/remove objects, do NOT change layout.
 - Avoid oversaturated HDR, plastic highlights, fake glow, or heavy "AI polish" that looks synthetic.
+- PRESERVE all existing product labels, brand logos, and text physically present on objects in the original photo (e.g. ketchup bottles, sauce labels). These are part of the real scene.
+- Do NOT add any NEW text, watermarks, overlays, or written characters that were not in the original photo.
 
 EDITING STYLE:
 - Gentle exposure, white balance, and natural contrast. Subtle warm toning is OK if it matches the venue.
@@ -412,8 +308,9 @@ async function main() {
       continue;
     }
 
-    // 2. 素材パスを取得（キャプション解析による動的素材選定）
-    const imageSources = pickFolderCatalogImages(config, theme, caption, hook);
+    // 2. Notion「素材チェックリスト」から画像パスを取得（content-calendar.js の指示に従う）
+    const checklist = p['素材チェックリスト']?.rich_text?.[0]?.plain_text || '';
+    const imageSources = parseChecklistForImages(checklist, config.basePath);
 
     if (imageSources.length === 0) {
       console.log(`  ⚠ テーマ "${theme}" の素材マッピングが見つかりません。スキップ。`);

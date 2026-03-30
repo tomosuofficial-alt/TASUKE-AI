@@ -14,32 +14,37 @@ Claude Code 上で最小構成の AI エージェント運用を実現する。
 - 外部への完全自律営業は行わない
 
 ## Agent構成
-1. CEO Agent
-2. Finance Agent
-3. Operations Agent
-4. Research Agent
+| # | Agent | 名前 | 由来 |
+|---|-------|------|------|
+| 1 | CEO Agent | ツカサ | 司（つかさ）＝ 統率する者 |
+| 2 | Finance Agent | カネル | 金（かね）＋ 動詞的響き ＝ お金を回す者 |
+| 3 | Operations Agent | マワリ | 回り ＝ 日々のオペを回す者 |
+| 4 | Research Agent | サグル | 探る（さぐる）＝ 調査の本質 |
+| 5 | Content Agent | ミセル | 見せる ＝ SNSで魅せる者 |
+
+※ CMO「ヒビキ」（GPT-5.3）・CTO「ツクル」（Cursor）は外部AI担当のため agent-spec 対象外
 
 ## Agentの責務
 
-### CEO Agent
+### CEO Agent「ツカサ」
 - Founder の指示を受ける
 - 意図分類を行う
-- 適切な Agent に委譲する
+- 適切な Agent（カネル・マワリ・サグル・ミセル）に委譲する
 - 最終結果を整形して返す
 
-### Finance Agent
+### Finance Agent「カネル」
 - 売上データ処理を担当する
 - 既存の売上関連スクリプトを実行する
 - 売上レポートを生成する
 - KPI更新に必要な出力を返す
 
-### Operations Agent
+### Operations Agent「マワリ」
 - 朝次ブリーフ生成を担当する
 - Notion 保存を担当する
 - Slack 通知を担当する
 - 各 Agent の成果物を所定フォーマットに整える
 
-### Research Agent
+### Research Agent「サグル」
 - 調査依頼に対応する
 - Web検索または指定ソースから情報収集する
 - 要点を短く整理する
@@ -47,21 +52,21 @@ Claude Code 上で最小構成の AI エージェント運用を実現する。
 
 ## 起動条件
 
-### CEO Agent
+### ツカサ（CEO Agent）
 - Slack などで自然言語指示を受けたとき
 - 「調べて」「売上見せて」「保存して」などの依頼を受けたとき
 
-### Finance Agent
+### カネル（Finance Agent）
 - 売上確認依頼を受けたとき
 - CSVインポート実行時
 - KPI更新処理が必要なとき
 
-### Operations Agent
+### マワリ（Operations Agent）
 - 毎朝の定期実行
 - 保存・通知依頼が来たとき
 - 各 Agent の成果物を Notion / Slack に流す必要があるとき
 
-### Research Agent
+### サグル（Research Agent）
 - 調査依頼が来たときのみ
 
 ## 成功判定

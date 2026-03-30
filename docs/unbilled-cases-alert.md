@@ -2,7 +2,7 @@
 
 Notion **案件管理DB** を走査し、請求漏れの可能性がある行を Slack `#daily-command` にまとめます（`--dry-run` でコンソールのみ）。
 
-**推奨セットアップ（精度を「完了」に近づける）**: 案件管理DBに Select 列 **`請求ステータス`** を追加し、選択肢を `未請求` / `請求済` / `不要` にする。`.env` に `CASE_BILLING_STATUS_PROP=請求ステータス` を設定する。ヒューリスティックは `CASE_UNBILLED_HEURISTIC=0` でオフにできる。
+**推奨セットアップ**: 案件管理DBに Select 列 **`請求ステータス`**（`未請求` / `請求済` / `不要`）。API で一括追加する場合は `node scripts/notion-add-case-billing-status.js`。`.env` に `CASE_BILLING_STATUS_PROP=請求ステータス` と `CASE_BILLING_UNBILLED_VALUE=未請求`。列が空の行は従来のヒューリスティックの対象のまま。**ヒューリスティックだけ止める**ときは `CASE_UNBILLED_HEURISTIC=0`。
 
 ## 判定ロジック（2段階）
 

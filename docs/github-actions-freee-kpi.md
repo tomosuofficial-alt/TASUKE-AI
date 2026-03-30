@@ -1,5 +1,7 @@
 # GitHub Actions: 月次 freee → KPI・売上DB
 
+Secrets の一覧・登録手順の全体像: **`docs/setup-github-secrets.md`**
+
 ワークフロー: `.github/workflows/monthly-freee-kpi.yml`
 
 毎月1日（UTC）に **前月** の freee 収入を取得し、Notion KPI・売上DB に書き込みます（Slack は `--no-slack`）。成功時に **意思決定ログ** に1行追加します。

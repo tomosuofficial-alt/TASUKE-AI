@@ -315,19 +315,9 @@ async function generateSalesReport() {
             ? 'Notion … データなしのため未保存。'
             : 'Notion … スマレジ未取得のため未保存。';
 
-  const reportText = `【② 店舗売上（昨日分）】#daily-command 朝7:00
-${dateStr} ${timeStr} 時点で取得
-
-何の数字？ … よいどころ千福だけ（スマレジの日次集計）
-どの日の売上？ … スマレジの集計日（sum_date）＝ ${sumDate}（${sumDateSlash}）
-（深夜営業の締めは翌朝7時頃まで待つと取りこぼしにくいです）
-
-────────────
+  const reportText = `② 千福売上｜${sumDateSlash}
 ${formatSales(smaregiData)}
-
-────────────
-${notionLine}
-※ このジョブは実行のたびに自動でクライアント売上DBへ反映します（毎回の依頼は不要です）。`;
+${notionLine}`;
 
   console.log('\n' + reportText + '\n');
 
