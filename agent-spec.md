@@ -1,109 +1,106 @@
-# TASUKE.AI 第一形態 実装仕様書
+# TASUKE.AI エージェント組織 実装仕様書
 
 ## 目的
-TASUKE.AI company の第一形態として、内製運用基盤を安定稼働させる。
+TASUKE.AI company のAI幹部組織として、大内さん（CEO・創業者）の依頼を専門部署に振り分けて効率的に処理する。
 
-この段階では、既存スクリプト資産を再利用しながら、
-Claude Code 上で最小構成の AI エージェント運用を実現する。
+## アーキテクチャ — 司令塔＋サブエージェント方式
 
-## 第一形態の方針
-- Quick Wins を優先する
-- 既存コードを捨てず、Agent から呼び出す
-- 複雑な自律判断より、明確なルーティングを優先する
-- Human-in-the-loop を残す
-- 外部への完全自律営業は行わない
+```
+大内さん
+  ↓ 依頼
+ツカサ（CEO / 司令塔 / .cursor/rules/tsukasa.mdc — 常時適用）
+  │
+  ├─ 依頼の意図を判断
+  ├─ 担当部署を特定
+  ├─ 該当部署の .mdc ルールファイルを Read
+  └─ Task tool でサブエージェントを起動（専門知識を prompt に注入）
+       │
+       ├─ ツクル（CTO）  → tsukuru.mdc → 技術・開発
+       ├─ カネル（CFO）  → kaneru.mdc  → 経理・KPI
+       ├─ ミセル（Content）→ miseru.mdc → Instagram
+       ├─ マワリ（COO）  → mawari.mdc  → 日次運用
+       ├─ サグル（CDO）  → saguru.mdc  → 調査
+       ├─ ヒビキ（CMO）  → hibiki.mdc  → マーケ戦略
+       └─ エガク（CDsO） → egaku.mdc   → デザイン
+```
 
-## Agent構成
-| # | Agent | 名前 | 由来 |
-|---|-------|------|------|
-| 1 | CEO Agent | ツカサ | 司（つかさ）＝ 統率する者 |
-| 2 | Finance Agent | カネル | 金（かね）＋ 動詞的響き ＝ お金を回す者 |
-| 3 | Operations Agent | マワリ | 回り ＝ 日々のオペを回す者 |
-| 4 | Research Agent | サグル | 探る（さぐる）＝ 調査の本質 |
-| 5 | Content Agent | ミセル | 見せる ＝ SNSで魅せる者 |
+### 設計原則
+- **ツカサは実行しない** — 振り分け・起動・結果報告のみ
+- **各部署は自分の領域だけ知っている** — 余計なコンテキストを持たない → 速い・正確
+- **並列起動** — 複数部署にまたがる依頼は同時に複数の Task tool を呼ぶ
+- **Human-in-the-loop** — 外部送信・削除・重要判断は大内さんの承認を取る
 
-※ CMO「ヒビキ」（GPT-5.3）・CTO「ツクル」（Cursor）は外部AI担当のため agent-spec 対象外
+## Agent構成（全8名）
 
-## Agentの責務
+| # | Agent | 名前 | 由来 | ルールファイル | globs |
+|---|-------|------|------|---------------|-------|
+| 1 | CEO | ツカサ | 司 = 統率する者 | `tsukasa.mdc` | なし（alwaysApply） |
+| 2 | CTO | ツクル | 作る = 形にする者 | `tsukuru.mdc` | `*.js`, `*.json`, `.github/**` |
+| 3 | CFO | カネル | 金 + 回す = お金を回す者 | `kaneru.mdc` | `freee-*.js`, `receipt-*.js` 等 |
+| 4 | Content | ミセル | 見せる = 魅せる者 | `miseru.mdc` | `content-*.js`, `instagram-*.js` |
+| 5 | COO | マワリ | 回り = オペを回す者 | `mawari.mdc` | `brief.js`, `daily-*.js` 等 |
+| 6 | CDO | サグル | 探る = 調査の本質 | `saguru.mdc` | `competitor-*.js` |
+| 7 | CMO | ヒビキ | 響き = 世に響かせる者 | `hibiki.mdc` | なし |
+| 8 | CDsO | エガク | 描く = ビジュアルで伝える者 | `egaku.mdc` | なし |
 
-### CEO Agent「ツカサ」
-- Founder の指示を受ける
-- 意図分類を行う
-- 適切な Agent（カネル・マワリ・サグル・ミセル）に委譲する
-- 最終結果を整形して返す
+## ルールファイル配置
 
-### Finance Agent「カネル」
-- 売上データ処理を担当する
-- 既存の売上関連スクリプトを実行する
-- 売上レポートを生成する
-- KPI更新に必要な出力を返す
+```
+.cursor/rules/
+├── tsukasa.mdc   ← 常時適用（alwaysApply: true）
+├── tsukuru.mdc   ← 技術ファイル触る時 or サブエージェント起動時
+├── kaneru.mdc    ← 経理ファイル触る時 or サブエージェント起動時
+├── miseru.mdc    ← コンテンツファイル触る時 or サブエージェント起動時
+├── mawari.mdc    ← 運用ファイル触る時 or サブエージェント起動時
+├── saguru.mdc    ← 調査ファイル触る時 or サブエージェント起動時
+├── hibiki.mdc    ← サブエージェント起動時のみ
+└── egaku.mdc     ← サブエージェント起動時のみ
+```
 
-### Operations Agent「マワリ」
-- 朝次ブリーフ生成を担当する
-- Notion 保存を担当する
-- Slack 通知を担当する
-- 各 Agent の成果物を所定フォーマットに整える
+## サブエージェント起動フロー
 
-### Research Agent「サグル」
-- 調査依頼に対応する
-- Web検索または指定ソースから情報収集する
-- 要点を短く整理する
-- 保存用の下書きを返す
+1. **ツカサが依頼を受ける**（tsukasa.mdc が常時適用されている）
+2. **担当部署を判断** — キーワード＋文脈で振り分け
+3. **該当 .mdc を Read** — `Read: .cursor/rules/tsukuru.mdc`
+4. **Task tool で起動** — 読み取った .mdc の全文 + 依頼内容 + コンテキストを prompt に注入
+5. **結果を受け取り、大内さんに報告** — ツカサが整形して返す
 
-## 起動条件
+## Claude Code との共存
 
-### ツカサ（CEO Agent）
-- Slack などで自然言語指示を受けたとき
-- 「調べて」「売上見せて」「保存して」などの依頼を受けたとき
+Claude Code 用のエージェント定義は `.claude/agents/*.md` に存在する。
+Cursor 用の `.cursor/rules/*.mdc` とは独立して共存する。
 
-### カネル（Finance Agent）
-- 売上確認依頼を受けたとき
-- CSVインポート実行時
-- KPI更新処理が必要なとき
+| プラットフォーム | 定義ファイル | 起動方式 |
+|----------------|------------|---------|
+| Cursor | `.cursor/rules/*.mdc` | ツカサ → Task tool |
+| Claude Code | `.claude/agents/*.md` | Claude Code のエージェント機能 |
 
-### マワリ（Operations Agent）
-- 毎朝の定期実行
-- 保存・通知依頼が来たとき
-- 各 Agent の成果物を Notion / Slack に流す必要があるとき
+## 行動原則
 
-### サグル（Research Agent）
-- 調査依頼が来たときのみ
+1. **計画先行** — 3ステップ以上は計画提示→承認→着手
+2. **学習する** — ミスは `docs/revision-log.md` に記録し繰り返さない
+3. **完了前チェック** — ドライラン・lint・CI影響を確認してから報告
+4. **コンテキストを守る** — 各部署は自分の領域のみ。横断はツカサが統合
+5. **力技を避ける** — 設計判断は2〜3案を比較表で提示
+6. **自律デバッグ** — まず自分で調査→修正→記録。大内さんに聞く前に答えを持つ
 
 ## 成功判定
 - Notion 保存成功
 - Slack 通知成功
-- JSON もしくは Markdown の必要項目が埋まっている
+- 必要項目が埋まっている
 - レポート本文が空でない
-- 失敗時に Founder へ通知できている
+- 失敗時に大内さんへ通知できている
 
 ## フォールバック
 - 外部 API 失敗時は最大 3 回再試行
 - JSON 不正時は 1 回だけ自動修復
-- 修復失敗時は生テキストで保存して Founder に通知
-- 未知フォーマット CSV は Finance Agent が停止し Founder に確認を求める
+- 修復失敗時は生テキストで保存して大内さんに通知
+- サブエージェントが失敗した場合はツカサが状況を整理して報告
 
-## 第一形態で作らないもの
+## 現時点で作らないもの
 - 音声 AI 架電
 - 自律アウトバウンド営業
 - 複雑な評価ループ
 - SNS自動投稿
 - フロントエンドSaaS化
 - 顧客向け外販エージェント基盤
-
-## 実装優先順位
-
-### Phase 1
-- Operations Agent
-- Finance Agent
-- 既存スクリプト呼び出し基盤
-- Notion / Slack の共通ツール化
-
-### Phase 2
-- CEO Agent
-- intent router
-- タスクスキーマ定義
-
-### Phase 3
-- Research Agent
-- エラーハンドリング強化
-- Human-in-the-loop 運用の安定化

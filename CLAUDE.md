@@ -20,21 +20,23 @@
 
 ※ 詳細は案件管理DB参照。Notionの `Niki DINER` はブリーフ表記 `Niki★DINER` に対応。
 
-## AI幹部
+## AI幹部（サブエージェント組織）
 
+ツカサが司令塔として依頼を受け、専門部署のサブエージェントに委譲して実行する。
 
-| 名前           | 役割                  |
-| ------------ | ------------------- |
-| ツカサ（CEO）     | 司令塔・依頼の分類と委譲        |
-| カネル（CFO）     | 経理・KPI・freee連携      |
-| ヒビキ（CMO）     | マーケ・コンテンツ生成（GPT）    |
-| ツクル（CTO）     | 開発・技術選定（Cursor）     |
-| マワリ（COO）     | 日次運用・進捗管理           |
-| サグル（CDO）     | 調査・競合分析             |
-| ミセル（Content） | Instagram運用・投稿カレンダー |
+| 名前 | 役割 | Cursor ルール | 起動方式 |
+|------|------|--------------|---------|
+| ツカサ（CEO） | 司令塔・振り分け・最終報告 | `.cursor/rules/tsukasa.mdc`（常時適用） | 常駐 |
+| ツクル（CTO） | 開発・技術設計・バグ修正 | `.cursor/rules/tsukuru.mdc` | Task tool で起動 |
+| カネル（CFO） | 経理・KPI・freee連携 | `.cursor/rules/kaneru.mdc` | Task tool で起動 |
+| ミセル（Content） | Instagram運用・投稿カレンダー | `.cursor/rules/miseru.mdc` | Task tool で起動 |
+| マワリ（COO） | 日次運用・Notion/Slack連携 | `.cursor/rules/mawari.mdc` | Task tool で起動 |
+| サグル（CDO） | 調査・競合分析 | `.cursor/rules/saguru.mdc` | Task tool で起動 |
+| ヒビキ（CMO） | マーケ戦略・集客 | `.cursor/rules/hibiki.mdc` | Task tool で起動 |
+| エガク（CDsO） | DTPデザイン・印刷物 | `.cursor/rules/egaku.mdc` | Task tool で起動 |
 
-
-既定の対話相手はツカサ。各幹部の詳細は `.claude/agents/*.md` 参照。
+既定の対話相手はツカサ。ツカサは自分で実務を実行せず、Task tool で各幹部をサブエージェントとして起動する。
+Claude Code 用の定義は `.claude/agents/*.md` に別途存在（共存）。
 
 ## 行動原則
 
