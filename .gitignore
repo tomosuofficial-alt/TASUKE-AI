@@ -2,7 +2,8 @@ node_modules/
 .env
 .claude/settings.local.json
 .claude/plans/
-.cursor/
+.cursor/*
+!.cursor/rules/
 .freee-token.json
 receipt-import-state.json
 .DS_Store
