@@ -94,4 +94,5 @@ Claude Code 用の定義は `.claude/agents/*.md` に別途存在（共存）。
 - セットアップ手順（やさしい版） → `docs/セットアップ手順-やさしい説明.md`
 - 過去の学び → `docs/revision-log.md`
 - 画像生成ルール（全プロジェクト共通） → `docs/image-generation-rules.md`
+- Instagram 運用ルール（全クライアント共通） → `docs/instagram-posting-rules.md`
 
