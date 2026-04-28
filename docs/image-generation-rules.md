@@ -14,9 +14,13 @@
 | 役割 | 担当 |
 |---|---|
 | **ミセル** | 場面に合わせた画像生成プロンプトを生成。形式・サイズ・品質・保存先を含む全項目を埋める |
-| **大内さん** | Codex デスクトップアプリ／CLI で対象フォルダを開いてプロンプトを実行 |
-| **ツカサ** | 役割振り分け、プロンプト品質チェック、配置後の JSX 反映／キャッシュバスター bump／Git コミット |
+| **ツカサ** | プロンプト品質チェック、**`codex exec` を Bash で実行して画像生成→保存まで完結**、配置後の JSX 反映／キャッシュバスター bump／Git コミット |
+| **大内さん** | 生成完了後の**仕上がりチェック**（OK / 再生成判定）。プロンプト微調整の最終判断 |
 | **エガク** | DTP・印刷物・ブランドアイデンティティの場面で参照される（CMYK 入稿等） |
+
+**標準フロー**: 大内さんが「○○の画像が欲しい」と依頼 → ミセル風プロンプト生成 → ツカサが `codex exec` で裏実行 → 完了報告 → 大内さんが OK / 再生成判定。
+
+**例外フロー**: 大内さんがプロンプトを手元で確認・微調整したい場合のみ、Codex デスクトップアプリ or CLI で手動実行。
 
 ---
 
@@ -99,17 +103,21 @@ Niki★DINER 既存ナンバリング: `01_Aboard / 02_card / 04_menu / 05_POP /
 
 ## 5. Codex CLI 起動時の固定オプション
 
+ツカサが裏で実行する標準コマンド:
+
 ```bash
-codex exec --skip-git-repo-check --full-auto \
+cd /tmp && codex exec --skip-git-repo-check --full-auto \
   -c 'sandbox_workspace_write.writable_roots=["<プロジェクトルート>","/var/folders","/tmp"]' \
-  "<ミセルが生成したプロンプト>"
+  "<ミセルが生成したプロンプト>" < /dev/null
 ```
 
 ### 注意
 
-- 日本語・スペース入りパスがあると codex の websocket header が UTF-8 エラーで落ちるので、**`/tmp` から起動 + `writable_roots` で対象フォルダを許可**
-- stdin は閉じる（`< /dev/null` を付ける、または run_in_background）
-- ミセルのプロンプトに `mkdir -p` を含めて、保存先フォルダが存在しなくても codex 側で作成
+- 日本語・スペース入りパスがあると codex の websocket header が UTF-8 エラーで落ちるので、**`/tmp` から起動 + `writable_roots` で対象フォルダを許可** が必須
+- stdin は閉じる（`< /dev/null` を付ける、Bash run_in_background でも OK）
+- ミセルのプロンプトに `mkdir -p "<保存先ディレクトリ>"` を含めて、保存先フォルダが存在しなくても codex 側で作成
+- 生成元 PNG は `~/.codex/generated_images/<session>/` に残る → 採用版を `cp` & 形式変換でサイトへ配置（論点 8 / L2 層）
+- 認証は Codex.app の app-server プロセスが ChatGPT Plus セッションを保持しているので **OPENAI_API_KEY 不要**
 
 ---
 
@@ -509,4 +517,5 @@ du -sh ~/.codex/generated_images/   # 確認
 | 日付 | 内容 | 担当 |
 |---|---|---|
 | 2026-04-29 | 初版制定（論点 1〜15、21項目） | 大内さん × ツカサ |
+| 2026-04-29 | §1 役割分担を実態に合わせ更新: ツカサが `codex exec` を Bash で裏実行する標準フロー化、大内さんは仕上がりチェックに集中。§5 に標準コマンドと OPENAI_API_KEY 不要の補足を追記 | 大内さん × ツカサ |
 
