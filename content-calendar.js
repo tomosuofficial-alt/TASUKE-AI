@@ -961,16 +961,32 @@ const CLIENT_PERSONAS = {
     menuHighlights: 'マルゲリータピザ、カルボナーラ、ゴルゴンゾーラペンネ、ハニートースト、カレートースト、スモークサーモン、クラフトビール',
   },
   'Niki★DINER': {
-    voice: 'アメリカンダイナーの陽気な兄貴',
-    firstPerson: 'うちの',
-    tone: 'テンポが速い。断定調。「〜だから。」「〜してみて。」勢いがある。ストレートに語る',
-    world: 'NYダイナー × 上州牛。ネオン、鉄板の音、肉汁、クラフト感。高崎モントレー5F（駅直結）',
-    target: '10〜30代、ガッツリ食べたい人、バーガー好き、駅ナカで探してる人',
-    senses: '聴覚（ジュッという音）、視覚（肉汁の断面）、味覚（ガツンとくる旨さ）',
-    ctaTone: 'ストレート。「食べに来て」「保存して」「友達に教えて」',
-    banned: '上品すぎる表現。回りくどい説明。「いかがでしょうか」系。煽り・恐怖訴求',
-    storeInfo: '🍔 上州牛100%スマッシュバーガー専門店\n📍高崎モントレー5F（高崎駅直結）\n🕚 11:00〜21:30\n🔥 吉澤誠太プロデュース',
-    menuHighlights: '上州牛スマッシュバーガー、ロコモコ、NYチキンオーバーライス、バッファローウイング、クリームソーダ、自家製ベーコン',
+    // 日英バイリンガル二層構造（Niki専用）
+    ja: {
+      voice: '上州牛スマッシュバーガーを丁寧に届ける、高崎のダイナースタッフ',
+      firstPerson: '私たち',
+      tone: 'です／ます基調。短文。事実を積み上げ、最後の1文に温かみを添える。体言止可。押しつけない',
+      world: 'NYダイナー × 上州牛。ネオン、鉄板の音、肉汁、クラフト感。高崎モントレー5F（駅直結）',
+      target: '10～30代、ガッツリ食べたい人、バーガー好き、駅ナカで探してる人',
+      senses: '聴覚（ジュッという音）、視覚（肉汁の断面）、味覚（ガツンとくる旨さ）',
+      ctaTone: '「ぜひお越しください」「お気軽にどうぞ」「お待ちしています」。予約を急かす煽りはしない',
+      banned: '「激安」「爆盛り」「今すぐ」「絶対」「必食」「神」「いかがでしょうか」「煽り・恐怖訴求」',
+      storeInfo: '🍔 上州牛100%スマッシュバーガー専門店\n📍高崎モントレー5F（高崎駅直結）\n🕚 11:00〜21:30\n🔥 吉澤誠太プロデュース',
+      menuHighlights: '上州牛スマッシュバーガー、ロコモコ、NYチキンオーバーライス、バッファローウイング、クリームソーダ、自家製ベーコン',
+    },
+    en: {
+      voice: 'Energetic American diner host',
+      firstPerson: 'we',
+      tone: 'Fast-paced. Declarative. "This is it." "Try it." Bold and direct',
+      world: 'NY diner meets Joshu beef. Neon lights, sizzling iron plate, juicy burgers. 5F Takasaki Montrey (walk from station)',
+      target: 'Teens to 30s, big-appetite diners, burger lovers, people searching near the station',
+      senses: 'Sound (sizzle on iron plate), sight (juicy cross-section), taste (bold, punchy flavor)',
+      ctaTone: 'Straight. "Come eat." "Save this." "Tag a friend."',
+      banned: 'Overly formal language. Roundabout explanations. Fear-based or pushy sales tactics',
+      storeInfo: '🍔 100% Joshu Beef Smash Burger specialty restaurant\n📍 Takasaki Montrey 5F (directly connected to Takasaki Station)\n🕚 11:00-21:30\n🔥 Produced by Seita Yoshizawa',
+      menuHighlights: 'Joshu Beef Smash Burger, Loco Moco, NY Chicken Over Rice, Buffalo Wings, Cream Soda, House-cured Bacon',
+    },
+    model: 'gemini-2.5-flash-lite',
   },
 };
 
@@ -1004,6 +1020,12 @@ async function generateContentWithAI(clientName, theme, season, pastCaptions) {
   const persona = CLIENT_PERSONAS[clientName];
   if (!persona) return null;
 
+  // ── Niki★DINER: 日英バイリンガル独立生成 ──────────────────────────
+  if (typeof persona === 'object' && persona.ja) {
+    return await _generateNikiBilingual(clientName, theme, season, pastCaptions, persona);
+  }
+
+  // ── 他クライアント: 既存パス（変更なし） ─────────────────────────────
   const pastList = pastCaptions.length > 0
     ? pastCaptions.map((p, i) => `  ${i + 1}. フック:「${p.hook}」/ キャプション冒頭:「${p.caption}」`).join('\n')
     : '  （過去データなし）';
@@ -1056,6 +1078,131 @@ ${pastList}
     return null;
   }
 }
+
+// ─── Niki★DINER 専用: 日英バイリンガル独立生成 ────────────────────
+
+async function _generateNikiBilingual(clientName, theme, season, pastCaptions, persona) {
+  const model = persona.model || 'gemini-2.5-flash-lite';
+  const ja = persona.ja;
+  const en = persona.en;
+
+  const pastList = pastCaptions.length > 0
+    ? pastCaptions.map((p, i) => `  ${i + 1}. フック:「${p.hook}」/ キャプション冒頭:「${p.caption}」`).join('\n')
+    : '  （過去データなし）';
+
+  // ── 日本語コール ──────────────────────────────────────────────────
+  const jaPrompt = `あなたは「${ja.voice}」として、飲食店のInstagramリール用テキストを書きます。
+
+## 店舗情報
+- 店名: ${clientName}
+- 世界観: ${ja.world}
+- メニュー例: ${ja.menuHighlights}
+- 店舗情報: ${ja.storeInfo}
+
+## 人格・トーン
+- 一人称: 「${ja.firstPerson}」
+- 口調: ${ja.tone}
+- 五感の軸: ${ja.senses}
+- CTA: ${ja.ctaTone}
+- 禁止: ${ja.banned}
+
+## 今回の投稿
+- テーマ: ${theme}
+- 季節: ${season}
+
+## 過去の投稿（これらと被らない内容にすること）
+${pastList}
+
+## 出力ルール
+- フック: スクロールを止める1文（20文字以内）。食欲か好奇心を刺激する。挨拶不要、いきなり核心
+- キャプション: 150〜250文字。短文。です／ます基調。最後に店舗情報（📍🕚）を含める
+- CTA: 行動喚起の1文（30文字以内）。煽らず丁寧に来店・保存に誘導
+
+## 出力形式（JSON）
+必ず以下のJSON形式で出力してください。JSON以外のテキストは一切不要です。
+{"hook": "...", "caption": "...", "cta": "..."}`;
+
+  // ── 英語コール（日本語版と同じテーマ・同じメインメニューで書く） ─────
+  const enPrompt = `You are a "${en.voice}" writing Instagram Reel copy for a Japanese burger restaurant.
+Write in English only. Use the SAME theme and SAME main menu item as the Japanese version below.
+
+## Store Info
+- Name: ${clientName}
+- World: ${en.world}
+- Menu highlights: ${en.menuHighlights}
+- Store info: ${en.storeInfo}
+
+## Voice & Tone
+- Pronoun: "${en.firstPerson}"
+- Tone: ${en.tone}
+- Senses: ${en.senses}
+- CTA style: ${en.ctaTone}
+- Banned: ${en.banned}
+
+## This Post
+- Theme: ${theme}
+- Season: ${season}
+
+## Output Rules
+- hook: One line that stops the scroll (max 15 words). Lead with appetite or curiosity. No greetings.
+- caption: 80-130 words. Short sentences. End with store info (📍🕚).
+- cta: One action-driving sentence (max 10 words). Lead to visit, save, or share.
+- The hook/caption MUST feature the same main menu item as the Japanese version.
+
+## Output Format (JSON)
+Return ONLY valid JSON. No extra text.
+{"hook": "...", "caption": "...", "cta": "..."}`;
+
+  let jaResult = null;
+  let enResult = null;
+
+  try {
+    const jaResponse = await ai.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: jaPrompt }] }],
+      config: { responseMimeType: 'application/json', temperature: 0.9 },
+    });
+    const jaText = jaResponse.text?.trim() || '';
+    const jaParsed = JSON.parse(jaText);
+    if (jaParsed.hook && jaParsed.caption && jaParsed.cta) {
+      jaResult = jaParsed;
+      console.log(`    🤖 Niki JA生成: フック「${jaResult.hook}」`);
+    }
+  } catch (e) {
+    console.log(`    ⚠ Niki JA生成失敗: ${e.message}`);
+  }
+
+  // 日本語失敗 → フォールバック（日本語のみ）に委ねる
+  if (!jaResult) return null;
+
+  try {
+    const enResponse = await ai.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: enPrompt }] }],
+      config: { responseMimeType: 'application/json', temperature: 0.9 },
+    });
+    const enText = enResponse.text?.trim() || '';
+    const enParsed = JSON.parse(enText);
+    if (enParsed.hook && enParsed.caption && enParsed.cta) {
+      enResult = enParsed;
+      console.log(`    🤖 Niki EN生成: hook "${enResult.hook}"`);
+    }
+  } catch (e) {
+    console.log(`    ⚠ Niki EN生成失敗（日本語のみ保存）: ${e.message}`);
+  }
+
+  // 英語成功 → 日英連結。英語失敗 → 日本語のみ
+  const combinedCaption = enResult
+    ? `${jaResult.caption}\n\n---\n\n${enResult.caption}`
+    : jaResult.caption;
+
+  return {
+    hook: jaResult.hook,
+    caption: combinedCaption,
+    cta: jaResult.cta,
+  };
+}
+
 
 // ─── フォールバック: 固定テンプレから選択 ─────────────────────────
 
