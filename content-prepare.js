@@ -206,7 +206,7 @@ async function updateNotionStatus(pageId, status, generatedPaths) {
 
   if (generatedPaths && generatedPaths.length > 0) {
     const pathsText = generatedPaths.map((p, i) => `${i + 1}. ${p}`).join('\n');
-    props['メモ'] = {
+    props['AI出力先'] = {
       rich_text: [{ text: { content: `AI生成画像:\n${pathsText}` } }],
     };
   }
@@ -309,7 +309,7 @@ async function main() {
     }
 
     // 2. Notion「素材チェックリスト」から画像パスを取得（content-calendar.js の指示に従う）
-    const checklist = p['素材チェックリスト']?.rich_text?.[0]?.plain_text || '';
+    const checklist = p['使用素材']?.rich_text?.[0]?.plain_text || '';
     const imageSources = parseChecklistForImages(checklist, config.basePath);
 
     if (imageSources.length === 0) {

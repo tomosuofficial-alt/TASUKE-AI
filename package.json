@@ -54,5 +54,8 @@
     "node-cron": "^4.2.1",
     "rss-parser": "^3.13.0",
     "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.41.0"
   }
 }

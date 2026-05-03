@@ -26,3 +26,19 @@
 - **状況**: キャプションはテーマ×3パターンの固定テンプレを月ローテーションしていた
 - **ミス**: 3ヶ月で一巡し、同じテーマなら同じ文章が何度も出る。バリエーション不足
 - **学び**: Gemini API で毎回動的生成に切り替え。過去10件＋同バッチ内の生成分をプロンプトに含めて重複回避。クライアント別の人格設定（`CLIENT_PERSONAS`）で Mz=静かな語り口、Niki=テンポ速い断定調に差別化。固定テンプレはフォールバックとして残す
+
+## 2026-04-26: content-calendar.js Niki★DINER 設定をweekdaySchedule方式に刷新
+- **変更内容**: 旧 baseDays/themeRotation/preferredTimes を weekdaySchedule（曜日×contentType×時間の1リスト）に統合。brandStoryByMonth による月次ブランドストーリー展開（A〜E ループ）を追加。calculatePostDatesFromWeekday() 関数を新規追加
+- **実装上の注意点**:
+  1. formatDateISO は toISOString() を使っていたため UTC -9時間でローカル日付より1日前になるバグがあった。getFullYear/getMonth/getDate を使うローカル日付方式に修正
+  2. ブランドストーリーは展開後のキー（例: "ブランドストーリーA: ..."）でフォールバック辞書（hookByThemeVariants 等）を引こうとして空になる問題。baseTheme 変数（展開前のキー）を保持して辞書ルックアップに使うよう修正
+  3. M'z cafe は従来の calculatePostDates + baseDays ロジックをそのまま維持（変更なし）
+- **学び**: 動的展開後のテーマ名をそのまま辞書キーに使うとヒットしない。展開前の"意味上のキー"を別変数で保持してフォールバックで使う
+
+## 2026-04-26: content-calendar.js のプロパティ名が Notion データソース実態と乖離していた
+- **状況**: `checkDuplicates` が全クライアント合計でカウントするため、M'z cafe 6件投入済みの状態で Niki★DINER を追加しようとすると重複検出で中断した
+- **ミス1（設計）**: `checkDuplicates` にクライアント絞り込みがなく、異なるクライアントのエントリを同一カウントに含めていた
+- **ミス2（プロパティ名不一致）**: `createPostEntry` / `setupDatabaseProperties` / `fetchPastCaptions` が使っているプロパティ名（`フック（冒頭3秒）` / `ハッシュタグセット` / `素材チェックリスト` / `コピペ用テキスト` / `編集手順`）と、実際の Notion データソースのプロパティ名（`冒頭フック` / `ハッシュタグ` / `使用素材` / `コピペ用` / `作業手順`）が乖離していた。`setupDatabaseProperties` が毎回「追加した」と成功ログを出しつつ、pages.create 時に validation_error が起きていた
+- **学び1**: クライアントをまたぐ DB はクライアントフィルタ付き重複チェックを必ず行う。`--client` フラグ実装で対応済み
+- **学び2**: Notion データソースのプロパティ名は `GET /v1/data_sources/{id}` で必ず実態確認してからスクリプトのキーを定義する。`notion.databases.update` の成功ログだけ信頼しない
+- **対応**: `checkDuplicates(year, month, clientFilter)` にクライアントフィルタ引数追加。プロパティ名を実態に合わせて修正（11箇所）。`--client` フラグで特定クライアントのみ処理・重複チェック可能に

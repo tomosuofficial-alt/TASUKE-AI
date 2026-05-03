@@ -503,8 +503,19 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
     postsPerMonth: 4,
     goal: '認知拡大・来店促進',
     concept: '吉澤清太氏プロデュース本格クラフトバーガー専門店',
-    preferredTimes: ['18:00', '12:00', '18:00', '12:00'],
-    baseDays: [4, 11, 18, 25],
+    weekdaySchedule: [
+      { theme: '看板バーガー クローズアップ', contentType: 'Reel', weekday: 3, time: '18:00' }, // 水
+      { theme: '調理ライブ',                contentType: 'Reel', weekday: 5, time: '18:00' }, // 金
+      { theme: 'ブランドストーリー',         contentType: 'Reel', weekday: 0, time: '12:00' }, // 日
+      { theme: 'スタイルショット',           contentType: 'Feed', weekday: 6, time: '12:00' }, // 土
+    ],
+    brandStoryByMonth: {
+      5: { label: 'A', subtheme: 'こだわり食材（上州牛・特注バンズ・自家製ソース）' },
+      6: { label: 'B', subtheme: '空間・店内の雰囲気' },
+      7: { label: 'C', subtheme: 'シェフ・スタッフの哲学' },
+      8: { label: 'D', subtheme: '夏限定・新作メニュー発表' },
+      9: { label: 'E', subtheme: '吉澤清太プロデュース・ブランドの背景' },
+    },
     locationTag: 'Niki★DINER（高崎モントレー5F・高崎駅直結）',
     instagramAccount: '@nikidiner',
     materialBasePath: '/Volumes/Home_Mac_SSD/01_Projects/Niki_Diner/03_Material',
@@ -552,20 +563,14 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
     // テーマ → 素材マッピング（画像3枚 + 動画1本）
     // ◎ Prosnap を最優先、各テーマの画像3枚のうち2枚以上を Prosnap から選択
     themeMaterialMap: {
-      '看板バーガー':           { nikiImages: ['Prosnap_バーガー', 'Prosnap_バーガー', 'Prosnap_サイド'], nikiVideo: '調理動画' },
+      '看板バーガー クローズアップ': { nikiImages: ['Prosnap_バーガー', 'Prosnap_バーガー', 'Prosnap_サイド'], nikiVideo: '調理動画' },
       '調理ライブ':            { nikiImages: ['Prosnap_バーガー', 'Prosnap_サイド', 'Prosnap_副菜'], nikiVideo: '調理動画' },
-      'ライスプレート・夜ダイナー': { nikiImages: ['Prosnap_ライスプレート', 'Prosnap_サラダ', 'Prosnap_サイド'], nikiVideo: '調理動画' },
-      '空間・映えドリンク':      { nikiImages: ['Prosnap_ドリンク', 'Prosnap_デザート', 'Prosnap_デザート'], nikiVideo: '調理動画' },
+      'ブランドストーリー':        { nikiImages: ['Prosnap_バーガー', 'Prosnap_副菜', 'Prosnap_サイド'], nikiVideo: '調理動画' },
+      'スタイルショット':          { nikiImages: ['Prosnap_バーガー', 'Prosnap_ドリンク', 'Prosnap_デザート'], nikiVideo: '調理動画' },
     },
 
-    themeRotation: [
-      '看板バーガー',
-      '調理ライブ',
-      'ライスプレート・夜ダイナー',
-      '空間・映えドリンク',
-    ],
     hookByThemeVariants: {
-      '看板バーガー': [
+      '看板バーガー クローズアップ': [
         '上州牛を鉄板にギュッと押し付けると…',
         'この断面、見てほしい。肉汁が止まらない',
         'ジャンクに見えて、実は本格派。それがスマッシュバーガー',
@@ -575,31 +580,31 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
         '鉄板の上で起きてること、全部見せます',
         'この音と香り、画面越しに伝わるかな',
       ],
-      'ライスプレート・夜ダイナー': [
-        'ハンバーガー屋のロコモコ、食べたことある？',
-        'バーガーだけじゃない。ここのライスプレートが実はすごい',
-        'ランチもディナーも全力。それがダイナースタイル',
+      'ブランドストーリー': [
+        '上州牛の本気、見せたい。/ This is Japanese craft burger.',
+        '鉄板とクラフトと、上州牛。その哲学を語ります',
+        '国際基準のクラフトバーガー。その背景にある話をしたい',
       ],
-      '空間・映えドリンク': [
-        'NYスタイルの空間で、クリームソーダを。',
-        '高崎駅でアメリカ気分。ネオンが光るダイナーへ',
-        'バーガーの後のクリームソーダ、これが正解',
+      'スタイルショット': [
+        '黒い背景に、本物。/ The real one. On black.',
+        'こだわりのバーガー、一枚の写真で語る',
+        'プロが撮った。本物だから、これでいい',
       ],
     },
     hookByTheme: {
-      '看板バーガー': '上州牛を鉄板にギュッと押し付けると…',
+      '看板バーガー クローズアップ': '上州牛を鉄板にギュッと押し付けると…',
       '調理ライブ': 'ソースもベーコンも全部手作り。これがクラフトバーガー',
-      'ライスプレート・夜ダイナー': 'ハンバーガー屋のロコモコ、食べたことある？',
-      '空間・映えドリンク': 'NYスタイルの空間で、クリームソーダを。',
+      'ブランドストーリー': '上州牛の本気、見せたい。/ This is Japanese craft burger.',
+      'スタイルショット': '黒い背景に、本物。/ The real one. On black.',
     },
     hookTemplates: [
       '上州牛を鉄板にギュッと押し付けると…',
       'グルメバーガーの最高峰、高崎にあります',
       'ソースもベーコンも全部手作り。これがクラフトバーガー',
-      'ハンバーガー屋のロコモコ、食べたことある？',
+      '上州牛の本気、見せたい。/ This is Japanese craft burger.',
     ],
     ctaByThemeVariants: {
-      '看板バーガー': [
+      '看板バーガー クローズアップ': [
         'フォローして最新メニューをチェック',
         '食べたくなったら保存しておいてね',
         'バーガー好きの友達をタグ付けして',
@@ -609,15 +614,15 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
         'この動画、保存して次のランチの参考に',
         'フォローすると調理動画がもっと見れます',
       ],
-      'ライスプレート・夜ダイナー': [
-        '友達をタグ付けして教えてあげて',
-        'ランチに迷ったらここ。保存しておいてね',
-        'メニュー全部見たい人はプロフィールから',
+      'ブランドストーリー': [
+        '予約はDMから / DM us to book.',
+        'ブランドの背景をもっと知りたい人はフォロー',
+        '次のご来店お待ちしています / See you at Niki DINER.',
       ],
-      '空間・映えドリンク': [
-        '気になったら保存 📌',
-        'デートにも使える。場所は高崎モントレー5F',
-        '映えスポット探してる人、ここだよ',
+      'スタイルショット': [
+        'フォローで限定情報 / Follow for drops.',
+        'このフィード、保存しておいてね',
+        'バーガーの美学、高崎モントレー5Fで',
       ],
     },
     ctaTemplates: [
@@ -634,7 +639,7 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
     bgmOptions: ['元気ポップ系'],
 
     captionVariants: {
-      '看板バーガー': [
+      '看板バーガー クローズアップ': [
         `上州牛を鉄板にギュッと押し付けると…\n\n表面はカリッと香ばしく、\n中は肉汁がジュワッと溢れ出す。\n\nこれが「スマッシュ製法」。\n上州牛100%の\nビーフパティ。\n\nグルメバーガーのパイオニア\n吉澤清太氏がプロデュースした\n本格クラフトバーガー。\n\nジャンクに見えて、実は本格派。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
         `この断面、見てほしい。\n\n上州牛100%のパティを\n高温の鉄板でギュッとプレス。\n\n外はカリッと焦げ目がついて、\n中から肉汁がじゅわっと。\n\nこれが「スマッシュバーガー」。\n一度食べたら、普通のバーガーに\n戻れなくなるかもしれない。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
         `ジャンクフードだと思ってない？\n\n上州牛を使ったパティ、\n自家製ベーコン、特製ソース。\n\n全部にこだわりがある\n「クラフト」バーガー。\n\nグルメバーガーのパイオニア\n吉澤清太氏が本気で作った味。\n\n食べればわかる。\nこれは「ちゃんとした」バーガーです。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
@@ -644,28 +649,28 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
         `鉄板の上で起きてること、\n全部見せます。\n\nパティをプレスする「ジュッ」という音。\nベーコンが焼ける香り。\nチーズがとろける瞬間。\n\n全部手作り、全部目の前で。\nこれがクラフトバーガーの現場。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
         `バーガーって、\n作る過程が一番おいしそう。\n\nパティを鉄板に押し付ける。\n肉汁がジュワッと広がる。\nチーズを乗せて、蓋をする。\n\nこの一連の流れ、\n何度見ても飽きない。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
       ],
-      'ライスプレート・夜ダイナー': [
-        `ハンバーガー屋のロコモコ、\n食べたことある？\n\nNYチキンオーバーライス、\nロコモコ、バッファローウイング。\n\nバーガーだけじゃない。\nダイナー飲みも、ガッツリ飯も。\n\nランチもディナーも、\n全時間帯で攻めてます。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
-        `バーガーだけじゃない。\nここのライスプレートが実はすごい。\n\nロコモコ、チキンオーバーライス、\nバッファローウイング。\n\nアメリカンダイナーの\n「ガッツリ飯」を\n高崎駅直結で。\n\nランチにも、夜飲みの〆にも。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
-        `{season}のランチ、どこ行く？\n\nバーガーもいいけど、\n今日はライスプレートの気分。\n\nNYチキンオーバーライスは\nスパイシーなチキンと\n特製ソースがご飯に絡んで最高。\n\n駅直結だから、\nサクッと食べて戻れるのもいい。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+      'ブランドストーリー': [
+        `上州牛の本気、見せたい。\n\nこのバーガーに使っているのは、\n群馬が誇る「上州牛」100%。\n特注バンズ、自家製ソース——\nすべてに理由がある。\n\nクラフトバーガーとは、\n妥協しないことだと思ってる。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+        `上質な食材が、本物のバーガーを作る。\n\n上州牛100%のパティ。\n職人が毎朝焼く特注バンズ。\n自家製スモークベーコンと特製ソース。\n\n「ジャンクに見えて本格派」\nそれがNiki★DINERのスタイル。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+        `This is Japanese craft burger.\n\n吉澤清太プロデュース、\nNiki★DINERが目指すのは\n「国際基準のクラフトバーガー」。\n\n上州牛、手作り、鉄板。\nすべてが、一口のために。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
       ],
-      '空間・映えドリンク': [
-        `NYスタイルの空間で、\nクリームソーダを。\n\nネオンサインが光るダイナー。\nアメリカの空気感を、\n高崎駅で味わえる。\n\nバーガーの後は\n自家製アップルパイと\nクリームソーダで〆。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
-        `高崎駅でアメリカ気分。\n\nネオンが光る店内、\nレトロなダイナーの雰囲気。\n\nバーガーを食べた後は\nクリームソーダで一息。\n\n写真を撮りたくなる空間が\nここにあります。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
-        `バーガーの後のクリームソーダ、\nこれが正解。\n\nネオンサインの下で、\nアップルパイとクリームソーダ。\n\nアメリカンダイナーの\n「〆のスイーツ」文化を\n高崎で体験してほしい。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+      'スタイルショット': [
+        `黒い背景に、本物。\n\nプロが撮った一枚。\nこだわりの素材、\n圧倒的なビジュアル。\n\n@junksmashburgers のような\n世界観で、Niki★DINERを表現する。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+        `The real one. On black.\n\nバーガーを一枚の写真で語る。\n言葉より、ビジュアルで。\n\n赤い背景に、上州牛。\nこれが僕たちのスタイル。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+        `フィードを統一する、こだわり。\n\nバーガーの写真って、\n見た瞬間に「うまそう」ってなるやつが正解。\n\n@skinnylouie.burgers に刺さる\n本格クラフトバーガー写真、ここにあります。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
       ],
     },
     captionTemplates: {
-      '看板バーガー': `上州牛を鉄板にギュッと押し付けると…\n\n表面はカリッと香ばしく、\n中は肉汁がジュワッと溢れ出す。\n\nこれが「スマッシュ製法」。\n上州牛100%の\nビーフパティ。\n\nグルメバーガーのパイオニア\n吉澤清太氏がプロデュースした\n本格クラフトバーガー。\n\nジャンクに見えて、実は本格派。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+      '看板バーガー クローズアップ': `上州牛を鉄板にギュッと押し付けると…\n\n表面はカリッと香ばしく、\n中は肉汁がジュワッと溢れ出す。\n\nこれが「スマッシュ製法」。\n上州牛100%の\nビーフパティ。\n\nグルメバーガーのパイオニア\n吉澤清太氏がプロデュースした\n本格クラフトバーガー。\n\nジャンクに見えて、実は本格派。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
       '調理ライブ': `ソースもベーコンも全部手作り。\nこれがクラフトバーガー。\n\nパティを鉄板にギュッと押し付ける。\n燻製ベーコンの香りが立ち上る。\n特製ソースを丁寧に重ねる。\n\nひとつひとつの工程に、\n「本物」へのこだわりがある。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
-      'ライスプレート・夜ダイナー': `ハンバーガー屋のロコモコ、\n食べたことある？\n\nNYチキンオーバーライス、\nロコモコ、バッファローウイング。\n\nバーガーだけじゃない。\nダイナー飲みも、ガッツリ飯も。\n\nランチもディナーも、\n全時間帯で攻めてます。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
-      '空間・映えドリンク': `NYスタイルの空間で、\nクリームソーダを。\n\nネオンサインが光るダイナー。\nアメリカの空気感を、\n高崎駅で味わえる。\n\nバーガーの後は\n自家製アップルパイと\nクリームソーダで〆。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+      'ブランドストーリー': `上州牛の本気、見せたい。\n\nこのバーガーに使っているのは、\n群馬が誇る「上州牛」100%。\n特注バンズ、自家製ソース——\nすべてに理由がある。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
+      'スタイルショット': `黒い背景に、本物。The real one. On black.\n\nプロが撮った一枚で語るNiki★DINERのスタイル。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
     },
 
     // ── テーマ別編集手順（1ステップ=1ツール=1アクション） ──
     // DaVinci Resolveテンプレート: 「NIKI_メイン」を全テーマ共通で使い回す
     materialInstructions: {
-      '看板バーガー': `【STEP 1: 写真を選ぶ】◎ Prosnap素材を最優先で使う
+      '看板バーガー クローズアップ': `【STEP 1: 写真を選ぶ】◎ Prosnap素材を最優先で使う
 メイン: 02_Photos/09_Prosnap/（◎ 001-039がバーガー系・赤背景統一・113枚）
 → チーズがとろけている写真、パティ断面が見えるカットを優先（例: 010, 009, 030）
 ※ Prosnapの品質が十分なのでImageFX加工は基本不要。縦構図が必要な場合のみリフレーム
@@ -724,7 +729,7 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
 
 ★ このテーマは既存動画があるのでVeo枠を使わない。他のテーマに温存する`,
 
-      'ライスプレート・夜ダイナー': `【STEP 1: 写真を選ぶ】◎ Prosnap素材を最優先で使う
+      'ブランドストーリー': `【STEP 1: 写真を選ぶ】◎ Prosnap素材を最優先で使う
 メイン: 02_Photos/09_Prosnap/（◎ 040-055がライスプレート系 — チキンオーバーライス・ロコモコ俯瞰）
 サブ:  02_Photos/09_Prosnap/（◎ 056-060がサラダ系）
 サブ:  02_Photos/09_Prosnap/（◎ 061-072がBBQチキン・サイド系）
@@ -746,7 +751,7 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
 4. BGMはテンプレ固定（変更不要）
 5. 書き出し → 1080x1920, MP4`,
 
-      '空間・映えドリンク': `【STEP 1: 写真を選ぶ】◎ Prosnap素材を最優先で使う
+      'スタイルショット': `【STEP 1: 写真を選ぶ】◎ Prosnap素材を最優先で使う
 ドリンク: 02_Photos/09_Prosnap/（◎ 087-096 — ビール・ドリンク系。090のビールが映える）
 デザート: 02_Photos/09_Prosnap/（◎ 097-113 — ブラウニー・チーズケーキ・アップルパイ・テーブル俯瞰。113の俯瞰が最強）
 内装: 02_Photos/02_Interior/（17枚）からネオンサイン・カウンター写真を1枚
@@ -779,7 +784,7 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
     },
 
     growthActions: {
-      '看板バーガー': `【投稿直後〜15分以内】
+      '看板バーガー クローズアップ': `【投稿直後〜15分以内】
 □ ストーリーズにリール投稿をシェア（初動ブースト）
 【投稿後〜2時間以内】
 □ #高崎グルメ #高崎ランチ の最新投稿30件に「いいね」
@@ -848,25 +853,59 @@ function calculatePostDates(year, month, baseDays) {
 }
 
 function formatDateISO(date) {
-  return date.toISOString().split('T')[0];
+  // toISOString() はUTCで9時間ずれるので、ローカル年月日を直接使う
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
+// ─── 投稿日計算（曜日指定・weekdaySchedule 用） ──────────────────
+
+/**
+ * weekdaySchedule 用: その月の各 weekday (0=日〜6=土) の最初の出現日を返す
+ * 戻り値: [{ date, theme, contentType, time }, ...] を投稿日順にソート
+ */
+function calculatePostDatesFromWeekday(year, month, weekdaySchedule) {
+  const results = [];
+  const lastDay = new Date(year, month, 0).getDate();
+
+  for (const entry of weekdaySchedule) {
+    // その月の最初の weekday が何日かを求める
+    const firstDate = new Date(year, month - 1, 1);
+    const firstWeekday = firstDate.getDay();
+    let diff = (entry.weekday - firstWeekday + 7) % 7;
+    const targetDay = 1 + diff;
+
+    if (targetDay > lastDay) continue; // 万一月をまたぐ場合はスキップ
+
+    const date = new Date(year, month - 1, targetDay);
+    results.push({ date, theme: entry.theme, contentType: entry.contentType, time: entry.time });
+  }
+
+  // 投稿日昇順でソート
+  results.sort((a, b) => a.date - b.date);
+  return results;
+}
+
 
 // ─── 重複チェック（同月のエントリが既にあるか） ───────────────
 
-async function checkDuplicates(year, month) {
+async function checkDuplicates(year, month, clientFilter = null) {
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
   const endMonth = month === 12 ? 1 : month + 1;
   const endYear = month === 12 ? year + 1 : year;
   const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
 
   try {
+    const dateFilters = [
+      { property: '投稿日', date: { on_or_after: startDate } },
+      { property: '投稿日', date: { before: endDate } },
+    ];
+    if (clientFilter) {
+      dateFilters.push({ property: 'クライアント', select: { equals: clientFilter } });
+    }
     const res = await queryContentDataSource({
-      filter: {
-        and: [
-          { property: '投稿日', date: { on_or_after: startDate } },
-          { property: '投稿日', date: { before: endDate } },
-        ],
-      },
+      filter: { and: dateFilters },
       page_size: 100,
     });
     return res.results.length;
@@ -893,27 +932,27 @@ async function setupDatabaseProperties() {
         { name: '企画中' }, { name: '素材準備' }, { name: '編集中' },
         { name: '確認待ち' }, { name: '投稿済み' },
       ] } },
-      'コンテンツ種別': { select: { options: [{ name: 'Reel' }] } },
+      'コンテンツ種別': { select: { options: [{ name: 'Reel' }, { name: 'Feed' }] } },
       'テーマカテゴリ': { select: { options: [
         // M'z cafe テーマ
         { name: '人気No.1メニュー' }, { name: '新作・限定メニュー' },
         { name: '調理シーン・盛付け' }, { name: 'ドリンク・スイーツ' },
         { name: 'ランチセット紹介' }, { name: 'お客様の注文風景' },
         // Niki★DINER テーマ
-        { name: '看板バーガー' }, { name: '調理ライブ' },
-        { name: 'ライスプレート・夜ダイナー' }, { name: '空間・映えドリンク' },
+        { name: '看板バーガー クローズアップ' }, { name: '調理ライブ' },
+        { name: 'ブランドストーリー' }, { name: 'スタイルショット' },
       ] } },
-      'フック（冒頭3秒）': { rich_text: {} },
+      '冒頭フック': { rich_text: {} },
       'CTA': { rich_text: {} },
       'キャプション': { rich_text: {} },
-      'ハッシュタグセット': { rich_text: {} },
+      'ハッシュタグ': { rich_text: {} },
       'BGM方向性': { select: { options: [
         { name: 'おしゃれカフェ系' }, { name: '落ち着きジャズ系' }, { name: '元気ポップ系' },
       ] } },
-      '素材チェックリスト': { rich_text: {} },
+      '使用素材': { rich_text: {} },
       '成長アクション': { rich_text: {} },
-      'コピペ用テキスト': { rich_text: {} },
-      '編集手順': { rich_text: {} },
+      'コピペ用': { rich_text: {} },
+      '作業手順': { rich_text: {} },
       '投稿前チェック': { rich_text: {} },
       '投稿後チェック': { rich_text: {} },
       'メモ': { rich_text: {} },
@@ -990,7 +1029,7 @@ async function fetchPastCaptions(clientName, limit = 10) {
     });
     return res.results.map(p => {
       const cap = p.properties['キャプション']?.rich_text?.[0]?.plain_text || '';
-      const hook = p.properties['フック（冒頭3秒）']?.rich_text?.[0]?.plain_text || '';
+      const hook = p.properties['冒頭フック']?.rich_text?.[0]?.plain_text || '';
       return { hook, caption: cap.substring(0, 150) };
     }).filter(x => x.caption);
   } catch {
@@ -1195,11 +1234,27 @@ function selectMaterials(config, theme, postIndex) {
 
 // ─── Notion にページ作成 ─────────────────────────────────────────
 
-async function createPostEntry(config, clientName, postIndex, date, month, pastCaptions) {
-  const theme = config.themeRotation[postIndex % config.themeRotation.length];
+async function createPostEntry(config, clientName, postIndex, date, month, pastCaptions, overrideTheme, overrideContentType, overrideTime) {
+  // weekdaySchedule からの呼び出し時は override を優先、それ以外は旧来ロジック
+  let theme = overrideTheme || (config.themeRotation
+    ? config.themeRotation[postIndex % config.themeRotation.length]
+    : config.weekdaySchedule[postIndex % config.weekdaySchedule.length].theme);
+
+  // ブランドストーリーの動的展開: (month - 5 + 60) % 5 で A〜E ループ
+  let baseTheme = theme; // フォールバック辞書ルックアップ用（展開前のキー）
+  if (theme === 'ブランドストーリー' && config.brandStoryByMonth) {
+    const storyIdx = ((month - 5) % 5 + 5) % 5;
+    const monthKeys = [5, 6, 7, 8, 9];
+    const entry = config.brandStoryByMonth[monthKeys[storyIdx]];
+    if (entry) {
+      theme = `ブランドストーリー${entry.label}: ${entry.subtheme}`;
+    }
+  }
+
+  const contentType = overrideContentType || 'Reel';
   const hashtags = getHashtagSet(config, postIndex);
   const bgm = config.bgmOptions[postIndex % config.bgmOptions.length];
-  const time = config.preferredTimes[postIndex % config.preferredTimes.length];
+  const time = overrideTime || (config.preferredTimes ? config.preferredTimes[postIndex % config.preferredTimes.length] : '18:00');
   const season = SEASON_MAP[month] || '';
 
   // AI でフック・キャプション・CTAを動的生成（失敗時はフォールバック）
@@ -1212,11 +1267,11 @@ async function createPostEntry(config, clientName, postIndex, date, month, pastC
     cta = aiContent.cta;
     console.log(`    🤖 AI生成: フック「${hook}」`);
   } else {
-    hook = pickVariant(config.hookByThemeVariants, theme, month)
-      || (config.hookByTheme && config.hookByTheme[theme])
+    hook = pickVariant(config.hookByThemeVariants, baseTheme, month)
+      || (config.hookByTheme && config.hookByTheme[baseTheme])
       || config.hookTemplates[postIndex % config.hookTemplates.length];
-    caption = generateCaptionFallback(config, theme, month);
-    cta = pickVariant(config.ctaByThemeVariants, theme, month)
+    caption = generateCaptionFallback(config, baseTheme, month);
+    cta = pickVariant(config.ctaByThemeVariants, baseTheme, month)
       || config.ctaTemplates[postIndex % config.ctaTemplates.length];
     console.log(`    📝 フォールバック: テンプレ使用`);
   }
@@ -1229,18 +1284,18 @@ async function createPostEntry(config, clientName, postIndex, date, month, pastC
   const copyPasteText = generateCopyPasteText(caption, hashtags);
 
   // 新規追加: 具体的な編集手順
-  const editInstructions = (config.materialInstructions?.[theme] || '')
+  const editInstructions = (config.materialInstructions?.[baseTheme] || config.materialInstructions?.[theme] || '')
     .replace(/\{season\}/g, season);
 
   // 新規追加: 成長アクション（テーマ別 or デフォルト）
-  const growth = config.growthActions?.[theme] || config.growthActions?.default || '';
+  const growth = config.growthActions?.[baseTheme] || config.growthActions?.[theme] || config.growthActions?.default || '';
 
   // 新規追加: 投稿前後チェックリスト
   const preCheck = config.prePostChecklist || '';
   const postCheck = config.postPostChecklist || '';
 
   // 素材カタログから使うファイルを自動選択
-  const materialSummary = selectMaterials(config, theme, postIndex);
+  const materialSummary = selectMaterials(config, baseTheme, postIndex);
 
   const dateStr = formatDateISO(date);
   const title = `${clientName}｜${theme}`;
@@ -1261,17 +1316,17 @@ async function createPostEntry(config, clientName, postIndex, date, month, pastC
         '投稿日': { date: { start: dateStr } },
         '投稿時間': { select: { name: time } },
         'ステータス': { select: { name: '企画中' } },
-        'コンテンツ種別': { select: { name: 'Reel' } },
+        'コンテンツ種別': { select: { name: contentType } },
         'テーマカテゴリ': { select: { name: theme } },
-        'フック（冒頭3秒）': { rich_text: rt(hook) },
+        '冒頭フック': { rich_text: rt(hook) },
         'CTA': { rich_text: rt(cta) },
         'キャプション': { rich_text: rt(caption) },
-        'ハッシュタグセット': { rich_text: rt(hashtags) },
+        'ハッシュタグ': { rich_text: rt(hashtags) },
         'BGM方向性': { select: { name: bgm } },
-        '素材チェックリスト': { rich_text: rt(materialSummary) },
+        '使用素材': { rich_text: rt(materialSummary) },
         '成長アクション': { rich_text: rt(growth) },
-        'コピペ用テキスト': { rich_text: rt(copyPasteText) },
-        '編集手順': { rich_text: rt(editInstructions) },
+        'コピペ用': { rich_text: rt(copyPasteText) },
+        '作業手順': { rich_text: rt(editInstructions) },
         '投稿前チェック': { rich_text: rt(preCheck) },
         '投稿後チェック': { rich_text: rt(postCheck) },
       },
@@ -1288,15 +1343,24 @@ async function createPostEntry(config, clientName, postIndex, date, month, pastC
 // ─── メイン処理 ──────────────────────────────────────────────────
 
 async function main() {
-  // CLI引数: node content-calendar.js [YYYY-MM] [--start-day N]
+  // CLI引数: node content-calendar.js [YYYY-MM] [--start-day N] [--dry-run] [--client <クライアント名>]
   const args = process.argv.slice(2);
   let year, month, startDay = 1;
+  const isDryRun = args.includes('--dry-run');
 
   const monthArg = args.find((a) => /^\d{4}-\d{2}$/.test(a));
   const startDayIdx = args.indexOf('--start-day');
   if (startDayIdx !== -1 && args[startDayIdx + 1]) {
     startDay = parseInt(args[startDayIdx + 1], 10);
   }
+
+  // --client フラグ: 指定したクライアントのみ処理（未指定は全件）
+  const clientIdx = args.indexOf('--client');
+  const clientFilter = (clientIdx !== -1 && args[clientIdx + 1]) ? args[clientIdx + 1] : null;
+  // CLIENT_CONFIGS のキーに部分一致させる（例: "Niki" → "Niki★DINER"）
+  const resolvedClient = clientFilter
+    ? Object.keys(CLIENT_CONFIGS).find((k) => k === clientFilter || k.includes(clientFilter)) || clientFilter
+    : null;
 
   if (monthArg) {
     [year, month] = monthArg.split('-').map(Number);
@@ -1308,22 +1372,24 @@ async function main() {
   }
 
   const monthStr = `${year}年${month}月`;
-  console.log(`\n=== Instagram 投稿カレンダー生成 ===`);
-  console.log(`対象: ${monthStr}${startDay > 1 ? `（${startDay}日以降）` : ''}\n`);
+  console.log(`\n=== Instagram 投稿カレンダー生成 ${isDryRun ? '[DRY-RUN]' : ''} ===`);
+  console.log(`対象: ${monthStr}${startDay > 1 ? `（${startDay}日以降）` : ''}${resolvedClient ? ` | クライアント: ${resolvedClient}` : ''}\n`);
 
-  // 重複チェック（--start-day 指定時はスキップ）
-  if (startDay <= 1) {
-    const existing = await checkDuplicates(year, month);
+  // 重複チェック（--start-day 指定時 or --dry-run 時はスキップ）
+  if (startDay <= 1 && !isDryRun) {
+    const existing = await checkDuplicates(year, month, resolvedClient);
     if (existing > 0) {
-      console.error(`⚠ ${monthStr}のエントリが既に${existing}件あります。`);
+      console.error(`⚠ ${monthStr}${resolvedClient ? `（${resolvedClient}）` : ''}のエントリが既に${existing}件あります。`);
       console.error('  重複を避けるため処理を中断します。');
       console.error('  既存エントリを削除してから再実行してください。');
       process.exit(1);
     }
   }
 
-  // DBプロパティセットアップ（初回のみ実質動作）
-  await setupDatabaseProperties();
+  // DBプロパティセットアップ（dry-run時はスキップ）
+  if (!isDryRun) {
+    await setupDatabaseProperties();
+  }
 
   console.log('');
 
@@ -1331,20 +1397,64 @@ async function main() {
   let totalFailed = 0;
 
   for (const [clientName, config] of Object.entries(CLIENT_CONFIGS)) {
-    const dates = calculatePostDates(year, month, config.baseDays);
-    const filteredDates = dates.filter((d) => d.getDate() >= startDay);
+    // --client フラグが指定されていれば、そのクライアントのみ処理
+    if (resolvedClient && clientName !== resolvedClient) continue;
+    let postEntries; // { date, postIndex, theme?, contentType?, time? }[]
 
-    if (filteredDates.length === 0) continue;
+    if (config.weekdaySchedule) {
+      // Niki★DINER: weekdaySchedule からその月の投稿日を計算
+      const scheduled = calculatePostDatesFromWeekday(year, month, config.weekdaySchedule);
+      const filtered = scheduled.filter((e) => e.date.getDate() >= startDay);
+      if (filtered.length === 0) continue;
+      postEntries = filtered.map((e, i) => ({ ...e, postIndex: i }));
+    } else {
+      // M'z cafe: 従来の baseDays ロジック
+      const dates = calculatePostDates(year, month, config.baseDays);
+      const filteredDates = dates.filter((d) => d.getDate() >= startDay);
+      if (filteredDates.length === 0) continue;
+      postEntries = filteredDates.map((date, i) => ({
+        date,
+        postIndex: dates.indexOf(date),
+        theme: null,
+        contentType: 'Reel',
+        time: null,
+      }));
+    }
 
-    console.log(`📱 ${clientName}（${filteredDates.length}本）`);
+    console.log(`📱 ${clientName}（${postEntries.length}本）`);
 
-    // 過去キャプションを取得（重複回避用、同一バッチ内の生成分も追記される）
+    if (isDryRun) {
+      // dry-run: Notion書き込みなし、投稿計画のみ表示
+      for (const entry of postEntries) {
+        // ブランドストーリー動的展開
+        let displayTheme = entry.theme || (config.themeRotation ? config.themeRotation[entry.postIndex % config.themeRotation.length] : entry.theme);
+        if (displayTheme === 'ブランドストーリー' && config.brandStoryByMonth) {
+          const storyIdx = ((month - 5) % 5 + 5) % 5;
+          const monthKeys = [5, 6, 7, 8, 9];
+          const bsEntry = config.brandStoryByMonth[monthKeys[storyIdx]];
+          if (bsEntry) displayTheme = `ブランドストーリー${bsEntry.label}: ${bsEntry.subtheme}`;
+        }
+        const dateStr = formatDateISO(entry.date);
+        const weekdayNames = ['日', '月', '火', '水', '木', '金', '土'];
+        const wd = weekdayNames[entry.date.getDay()];
+        const ct = entry.contentType || 'Reel';
+        const t = entry.time || (config.preferredTimes ? config.preferredTimes[entry.postIndex % config.preferredTimes.length] : '');
+        console.log(`  [DRY-RUN] ${dateStr}（${wd}）${t} | ${displayTheme} | ${ct}`);
+        totalCreated++;
+      }
+      console.log('');
+      continue;
+    }
+
+    // 過去キャプションを取得（重複回避用）
     const pastCaptions = await fetchPastCaptions(clientName, 10);
     console.log(`  📚 過去キャプション ${pastCaptions.length}件を参照`);
 
-    for (let i = 0; i < filteredDates.length; i++) {
-      const originalIdx = dates.indexOf(filteredDates[i]);
-      const success = await createPostEntry(config, clientName, originalIdx, filteredDates[i], month, pastCaptions);
+    for (const entry of postEntries) {
+      const success = await createPostEntry(
+        config, clientName, entry.postIndex, entry.date, month, pastCaptions,
+        entry.theme, entry.contentType, entry.time
+      );
       if (success) {
         totalCreated++;
       } else {
@@ -1358,10 +1468,16 @@ async function main() {
     console.log('');
   }
 
-  console.log(`=== 生成完了 ===`);
-  console.log(`作成: ${totalCreated}件 / 失敗: ${totalFailed}件`);
-  console.log(`\n→ Notion Content DB で確認してください`);
-  console.log(`→ 各投稿のステータスを「素材準備」に変えたら撮影開始！`);
+  if (isDryRun) {
+    console.log(`=== DRY-RUN 完了 ===`);
+    console.log(`予定投稿数: ${totalCreated}件（Notionへの書き込みはしていません）`);
+    console.log(`\n→ 確認後、--dry-run を外して本番実行してください`);
+  } else {
+    console.log(`=== 生成完了 ===`);
+    console.log(`作成: ${totalCreated}件 / 失敗: ${totalFailed}件`);
+    console.log(`\n→ Notion Content DB で確認してください`);
+    console.log(`→ 各投稿のステータスを「素材準備」に変えたら撮影開始！`);
+  }
 }
 
 if (require.main === module) {

@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "POP Preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "8999", "."],
+      "port": 8999
+    },
+    {
       "name": "朝次ブリーフ (brief.js)",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "brief"],
