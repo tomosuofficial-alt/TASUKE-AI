@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "tomosu-website (静的サーバ)",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/takashiouchi/Developer/tomosu-website && python3 -m http.server 4317"],
+      "port": 4317
+    },
+    {
       "name": "朝次ブリーフ (brief.js)",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "brief"],
