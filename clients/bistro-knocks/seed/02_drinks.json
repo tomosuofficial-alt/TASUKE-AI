@@ -1,0 +1,30 @@
+[
+  {
+    "id": "none",
+    "name": "無し",
+    "sales_price_incl_tax": 0,
+    "cost_excl_tax": 0,
+    "note": "飲料なし"
+  },
+  {
+    "id": "pet_free",
+    "name": "PET茶（無料）",
+    "sales_price_incl_tax": 0,
+    "cost_excl_tax": null,
+    "note": "2,500円以上の弁当に自動付与"
+  },
+  {
+    "id": "pet",
+    "name": "PET茶 180円",
+    "sales_price_incl_tax": 180,
+    "cost_excl_tax": null,
+    "note": "有料オプション"
+  },
+  {
+    "id": "pack",
+    "name": "紙茶 100円",
+    "sales_price_incl_tax": 100,
+    "cost_excl_tax": null,
+    "note": "有料オプション"
+  }
+]

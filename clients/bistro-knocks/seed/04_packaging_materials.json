@@ -1,0 +1,56 @@
+[
+  {
+    "name": "容器（黒）",
+    "category": "サイズ別",
+    "price_excl_tax": null,
+    "applies_to": "黒弁当のみ"
+  },
+  {
+    "name": "容器（新）",
+    "category": "サイズ別",
+    "price_excl_tax": null,
+    "applies_to": "新弁当のみ"
+  },
+  {
+    "name": "蓋（黒）",
+    "category": "サイズ別",
+    "price_excl_tax": null,
+    "applies_to": "黒弁当のみ"
+  },
+  {
+    "name": "蓋（新）",
+    "category": "サイズ別",
+    "price_excl_tax": null,
+    "applies_to": "新弁当のみ"
+  },
+  {
+    "name": "箸",
+    "category": "共通",
+    "price_excl_tax": null,
+    "applies_to": "全メニュー"
+  },
+  {
+    "name": "ワサガード",
+    "category": "共通",
+    "price_excl_tax": null,
+    "applies_to": "全メニュー"
+  },
+  {
+    "name": "帯",
+    "category": "共通",
+    "price_excl_tax": null,
+    "applies_to": "全メニュー"
+  },
+  {
+    "name": "シーザードレッシング",
+    "category": "共通",
+    "price_excl_tax": 16.15,
+    "applies_to": "全メニュー / QP 1袋10ml×40袋/箱 税抜646円（トーホー 2026-05-18）"
+  },
+  {
+    "name": "おしぼり",
+    "category": "共通",
+    "price_excl_tax": null,
+    "applies_to": "全メニュー"
+  }
+]

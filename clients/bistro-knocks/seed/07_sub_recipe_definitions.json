@@ -1,0 +1,68 @@
+[
+  {
+    "name": "ハンバーグソース",
+    "batch_yield_override": null,
+    "basis": "batch",
+    "note": "バッチ合計（味醂+醤油+水+粒マスタード等）の合算をccベースで使用"
+  },
+  {
+    "name": "ブールブランソース",
+    "batch_yield_override": 30,
+    "basis": "per_serving",
+    "note": "1食=30cc 完成。レシピは1食分で記載"
+  },
+  {
+    "name": "オニオンソース",
+    "batch_yield_override": null,
+    "basis": "batch",
+    "note": "オニオンステーキソース2L + ニンニク醤油ソース300cc"
+  },
+  {
+    "name": "ピクルス",
+    "batch_yield_override": 9200,
+    "basis": "batch",
+    "note": "出来上がり9,200g＝生11,600g→可食部10,670g(廃棄率反映)→塩漬け×85%→水晒し×105%→水切り×97%。調味液は最終的に切るため重量加算なし"
+  },
+  {
+    "name": "ポリネシアンソース",
+    "batch_yield_override": null,
+    "basis": "batch",
+    "note": "サラダ油+ケチャップ+白ワイン+醤油の合算をccベースで使用"
+  },
+  {
+    "name": "ソースジャンジャンブル",
+    "batch_yield_override": null,
+    "basis": "batch",
+    "note": "液体材料の合計をccベースで使用"
+  },
+  {
+    "name": "エバラおろしのたれ",
+    "batch_yield_override": null,
+    "basis": "market",
+    "note": "市販品。1Lあたりの単位原価で計算（業者単価で自動更新）"
+  },
+  {
+    "name": "粒マスタード単品",
+    "batch_yield_override": null,
+    "basis": "condiment",
+    "note": "そのまま提供。g単位"
+  },
+  {
+    "name": "サラダベース",
+    "batch_yield_override": null,
+    "basis": "batch",
+    "note": "出来上がり量は C列に実測値を入力（個・束だけのため自動合計不可）"
+  },
+  {
+    "name": "ポテトサラダ",
+    "batch_yield_override": null,
+    "basis": "batch",
+    "note": "レシピ未受領。出来上がり量と材料を後で入力"
+  },
+  {
+    "name": "蒸し野菜",
+    "batch_yield_override": 10280,
+    "basis": "batch",
+    "note": "蒸し後重量(g)＝生重量12,850g×80%歩留まり仮算。キャベツ2×1200+白菜0.5×2500+にんじん3×180+玉ねぎ3×220+もやし8000"
+  }
+]
