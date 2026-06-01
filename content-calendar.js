@@ -2,7 +2,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client } = require('@notionhq/client');
-const { GoogleGenAI } = require('@google/genai');
+const { runClaude } = require('./scripts/lib/claude-cli.js');
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
@@ -16,7 +16,20 @@ const CONTENT_DATA_SOURCE_ID =
 
 const { queryContentDataSource } = require('./scripts/lib/notion-content-data-source-query.js');
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+/** キャプション生成スキーマ — Claude の構造化出力で hook/caption/cta を必須化 */
+const CAPTION_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['hook', 'caption', 'cta'],
+  properties: {
+    hook: { type: 'string' },
+    caption: { type: 'string' },
+    cta: { type: 'string' },
+  },
+};
+
+/** content-calendar の既定モデル alias。CLIENT_PERSONAS で個別上書き可 */
+const CAPTION_DEFAULT_MODEL = process.env.CONTENT_CAPTION_MODEL || 'sonnet';
 
 /** data_sources API（SDK未対応）でプロパティスキーマを取得 */
 async function fetchDataSourceProperties(dataSourceId) {
@@ -225,7 +238,7 @@ const CLIENT_CONFIGS = {
       'お客様の注文風景': `「何にする？」\n「全部おいしそうで決まらない」\n\nテーブルに並ぶ料理を見れば、\nこの店の実力がわかる。\n\nリアルな食事風景から伝わる、\n「また来たい」の空気感。\n\n📍高崎駅東口 徒歩5分\n🕐 17:00〜翌0:00（年中無休）`,
     },
 
-    // ── テーマ別編集手順（1ステップ=1ツール=1アクション） ──
+    // ── テーマ別作業手順（1ステップ=1ツール=1アクション） ──
     // DaVinci Resolveテンプレート: 「MZ_メイン」を全テーマ共通で使い回す（動画→画像3枚構成）
     materialInstructions: {
       '人気No.1メニュー': `【STEP 1: 写真を選ぶ】
@@ -485,7 +498,7 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
 □ リールのカバー画像を選定（料理が一番映えるフレーム）
 □ 位置情報を設定 → 「M'z cafe」で検索
 □ ALTテキストを入力（例: 「M'z cafeのマルゲリータピザ。チーズがとろける瞬間」）
-□ コピペ用テキストからキャプションを貼り付け
+□ コピペ用からキャプションを貼り付け
 □ アカウント設定: ビジネスアカウント確認
 □ 投稿時間を確認（この投稿の指定時間に予約投稿）
 □ BGMを設定（指定の方向性で検索）
@@ -662,7 +675,7 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
       '空間・映えドリンク': `NYスタイルの空間で、\nクリームソーダを。\n\nネオンサインが光るダイナー。\nアメリカの空気感を、\n高崎駅で味わえる。\n\nバーガーの後は\n自家製アップルパイと\nクリームソーダで〆。\n\n📍高崎モントレー5F（高崎駅直結）\n🕐 11:00〜21:30`,
     },
 
-    // ── テーマ別編集手順（1ステップ=1ツール=1アクション） ──
+    // ── テーマ別作業手順（1ステップ=1ツール=1アクション） ──
     // DaVinci Resolveテンプレート: 「NIKI_メイン」を全テーマ共通で使い回す
     materialInstructions: {
       '看板バーガー': `【STEP 1: 写真を選ぶ】◎ Prosnap素材を最優先で使う
@@ -802,7 +815,7 @@ Veo使えない日 → DaVinci Resolveのダイナミックズームを使うの
 □ リールのカバー画像を選定（バーガーが一番映えるフレーム）
 □ 位置情報を設定 → 「Niki★DINER」または「高崎モントレー」で検索
 □ ALTテキストを入力（例: 「上州牛スマッシュバーガーの断面。肉汁が溢れる瞬間」）
-□ コピペ用テキストからキャプションを貼り付け
+□ コピペ用からキャプションを貼り付け
 □ アカウント設定: ビジネスアカウント確認
 □ 投稿時間を確認（この投稿の指定時間に予約投稿）
 □ BGMを設定（指定の方向性で検索）
@@ -903,17 +916,17 @@ async function setupDatabaseProperties() {
         { name: '看板バーガー' }, { name: '調理ライブ' },
         { name: 'ライスプレート・夜ダイナー' }, { name: '空間・映えドリンク' },
       ] } },
-      'フック（冒頭3秒）': { rich_text: {} },
+      '冒頭フック': { rich_text: {} },
       'CTA': { rich_text: {} },
       'キャプション': { rich_text: {} },
-      'ハッシュタグセット': { rich_text: {} },
+      'ハッシュタグ': { rich_text: {} },
       'BGM方向性': { select: { options: [
         { name: 'おしゃれカフェ系' }, { name: '落ち着きジャズ系' }, { name: '元気ポップ系' },
       ] } },
-      '素材チェックリスト': { rich_text: {} },
+      '使用素材': { rich_text: {} },
       '成長アクション': { rich_text: {} },
-      'コピペ用テキスト': { rich_text: {} },
-      '編集手順': { rich_text: {} },
+      'コピペ用': { rich_text: {} },
+      '作業手順': { rich_text: {} },
       '投稿前チェック': { rich_text: {} },
       '投稿後チェック': { rich_text: {} },
       'メモ': { rich_text: {} },
@@ -986,7 +999,7 @@ const CLIENT_PERSONAS = {
       storeInfo: '🍔 100% Joshu Beef Smash Burger specialty restaurant\n📍 Takasaki Montrey 5F (directly connected to Takasaki Station)\n🕚 11:00-21:30\n🔥 Produced by Seita Yoshizawa',
       menuHighlights: 'Joshu Beef Smash Burger, Loco Moco, NY Chicken Over Rice, Buffalo Wings, Cream Soda, House-cured Bacon',
     },
-    model: 'gemini-2.5-flash-lite',
+    // model 未指定なら CAPTION_DEFAULT_MODEL（既定 sonnet）を使う
   },
 };
 
@@ -1006,7 +1019,7 @@ async function fetchPastCaptions(clientName, limit = 10) {
     });
     return res.results.map(p => {
       const cap = p.properties['キャプション']?.rich_text?.[0]?.plain_text || '';
-      const hook = p.properties['フック（冒頭3秒）']?.rich_text?.[0]?.plain_text || '';
+      const hook = p.properties['冒頭フック']?.rich_text?.[0]?.plain_text || '';
       return { hook, caption: cap.substring(0, 150) };
     }).filter(x => x.caption);
   } catch {
@@ -1062,15 +1075,13 @@ ${pastList}
 {"hook": "...", "caption": "...", "cta": "..."}`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: { responseMimeType: 'application/json', temperature: 0.9 },
+    const { result } = await runClaude({
+      prompt,
+      schema: CAPTION_SCHEMA,
+      model: persona.model || CAPTION_DEFAULT_MODEL,
     });
-    const text = response.text?.trim() || '';
-    const parsed = JSON.parse(text);
-    if (parsed.hook && parsed.caption && parsed.cta) {
-      return parsed;
+    if (result && result.hook && result.caption && result.cta) {
+      return result;
     }
     return null;
   } catch (e) {
@@ -1082,7 +1093,7 @@ ${pastList}
 // ─── Niki★DINER 専用: 日英バイリンガル独立生成 ────────────────────
 
 async function _generateNikiBilingual(clientName, theme, season, pastCaptions, persona) {
-  const model = persona.model || 'gemini-2.5-flash-lite';
+  const model = persona.model || CAPTION_DEFAULT_MODEL;
   const ja = persona.ja;
   const en = persona.en;
 
@@ -1157,15 +1168,13 @@ Return ONLY valid JSON. No extra text.
   let enResult = null;
 
   try {
-    const jaResponse = await ai.models.generateContent({
+    const { result } = await runClaude({
+      prompt: jaPrompt,
+      schema: CAPTION_SCHEMA,
       model,
-      contents: [{ role: 'user', parts: [{ text: jaPrompt }] }],
-      config: { responseMimeType: 'application/json', temperature: 0.9 },
     });
-    const jaText = jaResponse.text?.trim() || '';
-    const jaParsed = JSON.parse(jaText);
-    if (jaParsed.hook && jaParsed.caption && jaParsed.cta) {
-      jaResult = jaParsed;
+    if (result && result.hook && result.caption && result.cta) {
+      jaResult = result;
       console.log(`    🤖 Niki JA生成: フック「${jaResult.hook}」`);
     }
   } catch (e) {
@@ -1176,14 +1185,12 @@ Return ONLY valid JSON. No extra text.
   if (!jaResult) return null;
 
   try {
-    const enResponse = await ai.models.generateContent({
+    const { result: enParsed } = await runClaude({
+      prompt: enPrompt,
+      schema: CAPTION_SCHEMA,
       model,
-      contents: [{ role: 'user', parts: [{ text: enPrompt }] }],
-      config: { responseMimeType: 'application/json', temperature: 0.9 },
     });
-    const enText = enResponse.text?.trim() || '';
-    const enParsed = JSON.parse(enText);
-    if (enParsed.hook && enParsed.caption && enParsed.cta) {
+    if (enParsed && enParsed.hook && enParsed.caption && enParsed.cta) {
       enResult = enParsed;
       console.log(`    🤖 Niki EN生成: hook "${enResult.hook}"`);
     }
@@ -1219,7 +1226,7 @@ function generateCaptionFallback(config, theme, month) {
   return template.replace(/\{season\}/g, season);
 }
 
-// ─── コピペ用テキスト生成（キャプション + ハッシュタグ結合） ────
+// ─── コピペ用生成（キャプション + ハッシュタグ結合） ────
 
 function generateCopyPasteText(caption, hashtags) {
   if (!caption) return hashtags;
@@ -1275,7 +1282,7 @@ function selectMaterials(config, theme, postIndex) {
   const mapping = config.themeMaterialMap?.[theme];
   if (!mapping) {
     return config.materialBasePath
-      ? `📂 素材パス: ${config.materialBasePath}\n詳細は「編集手順」を参照`
+      ? `📂 素材パス: ${config.materialBasePath}\n詳細は「作業手順」を参照`
       : '';
   }
 
@@ -1375,7 +1382,7 @@ async function createPostEntry(config, clientName, postIndex, date, month, pastC
 
   const copyPasteText = generateCopyPasteText(caption, hashtags);
 
-  // 新規追加: 具体的な編集手順
+  // 新規追加: 具体的な作業手順
   const editInstructions = (config.materialInstructions?.[theme] || '')
     .replace(/\{season\}/g, season);
 
@@ -1410,15 +1417,15 @@ async function createPostEntry(config, clientName, postIndex, date, month, pastC
         'ステータス': { select: { name: '企画中' } },
         'コンテンツ種別': { select: { name: 'Reel' } },
         'テーマカテゴリ': { select: { name: theme } },
-        'フック（冒頭3秒）': { rich_text: rt(hook) },
+        '冒頭フック': { rich_text: rt(hook) },
         'CTA': { rich_text: rt(cta) },
         'キャプション': { rich_text: rt(caption) },
-        'ハッシュタグセット': { rich_text: rt(hashtags) },
+        'ハッシュタグ': { rich_text: rt(hashtags) },
         'BGM方向性': { select: { name: bgm } },
-        '素材チェックリスト': { rich_text: rt(materialSummary) },
+        '使用素材': { rich_text: rt(materialSummary) },
         '成長アクション': { rich_text: rt(growth) },
-        'コピペ用テキスト': { rich_text: rt(copyPasteText) },
-        '編集手順': { rich_text: rt(editInstructions) },
+        'コピペ用': { rich_text: rt(copyPasteText) },
+        '作業手順': { rich_text: rt(editInstructions) },
         '投稿前チェック': { rich_text: rt(preCheck) },
         '投稿後チェック': { rich_text: rt(postCheck) },
       },

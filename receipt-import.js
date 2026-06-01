@@ -13,8 +13,8 @@
 //   node receipt-import.js --learn               — freeeから仕分けルールを再学習
 //   node receipt-import.js --no-compress <dir>   — 登録後も元の巨大画像のまま（省略時はJPEG化して軽量化）
 //
-// OCR（Gemini）環境変数:
-//   RECEIPT_GEMINI_MODEL      — 既定 gemini-2.5-flash（旧 GAS は 2.0-flash 相当）
+// OCR（Claude Code CLI）環境変数:
+//   RECEIPT_OCR_MODEL              — 既定 haiku（claude-haiku-4-5 等の full name も可）
 //   RECEIPT_OCR_PARTNER_PROMPT_MAX — receipt-rules.json からプロンプトに載せる取引先名の最大件数（既定 120）
 // ============================================================
 
@@ -23,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const https = require('https');
-const { GoogleGenAI } = require('@google/genai');
+const { runClaude } = require('./scripts/lib/claude-cli.js');
 const { loadToken, getAccessToken, refreshToken, httpsGet } = require('./freee-auth');
 
 const { execSync } = require('child_process');
@@ -95,10 +95,38 @@ const CANONICAL_EXPENSE_NAMES = [
   '荷造運賃', '減価償却費', '地代家賃', '支払手数料', '事務用品費',
 ];
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+/** Claude Code CLI のモデル（既定: haiku alias）。sonnet / opus / claude-* も可 */
+const RECEIPT_OCR_MODEL = process.env.RECEIPT_OCR_MODEL || process.env.RECEIPT_GEMINI_MODEL || 'haiku';
 
-/** Gemini レシートOCR用モデル（既定: gemini-2.5-flash）。GAS 版は gemini-2.0-flash 相当 */
-const RECEIPT_GEMINI_MODEL = process.env.RECEIPT_GEMINI_MODEL || 'gemini-2.5-flash';
+/** OCR 結果スキーマ — Claude の構造化出力を強制（systemプロンプトの「出力JSON」と一致させる） */
+const RECEIPT_OCR_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['receipts'],
+  properties: {
+    receipts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: true,
+        required: ['store_name', 'date', 'total_amount', 'items', 'payment_method', 'category_guess', 'tax_uncertain', 'raw_text'],
+        properties: {
+          store_name: { type: 'string' },
+          date: { type: ['string', 'null'] },
+          total_amount: { type: ['number', 'null'] },
+          tax_amount: { type: ['number', 'null'] },
+          items: { type: 'array', items: { type: 'string' } },
+          payment_method: { type: 'string' },
+          category_guess: { type: 'string' },
+          item_guess: { type: ['string', 'null'] },
+          section_guess: { type: ['string', 'null'] },
+          tax_uncertain: { type: 'boolean' },
+          raw_text: { type: 'string' },
+        },
+      },
+    },
+  },
+};
 
 /**
  * receipt-rules.json の取引先キーを最大 N 件、プロンプト用に列挙（GAS の PARTNERS 相当）
@@ -189,37 +217,6 @@ Web制作, マーケティング, 事務, 制作, 営業, 撮影・素材制作,
 - JSON 以外の文字
 - コメントや説明文
 - 桁の取り違え（金額は必ず再確認）`;
-}
-
-function parseGeminiReceiptJson(text) {
-  let clean = String(text || '').replace(/```json|```/gi, '').trim();
-  if (!clean) throw new Error('Gemini OCR: 応答が空でした');
-
-  try {
-    return JSON.parse(clean);
-  } catch (e) {
-    const lastBrace = clean.lastIndexOf('}');
-    if (lastBrace > 0) {
-      let attempt = clean.substring(0, lastBrace + 1);
-      if (attempt.trimStart().startsWith('[') && !attempt.trimEnd().endsWith(']')) {
-        attempt += ']';
-      }
-      try {
-        return JSON.parse(attempt);
-      } catch (e2) {
-        /* fall through */
-      }
-    }
-    const jsonMatch = clean.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      try {
-        return JSON.parse(jsonMatch[0]);
-      } catch (e3) {
-        throw new Error(`Gemini OCR: JSONを解析できませんでした: ${e.message}`);
-      }
-    }
-    throw new Error(`Gemini OCR: JSONを解析できませんでした: ${e.message}`);
-  }
 }
 
 /** YYYY/MM/DD 等 → YYYY-MM-DD */
@@ -456,24 +453,32 @@ function compressImageInPlace(imagePath) {
   return { ok: true, path: outPath, origSize, newSize };
 }
 
-// ─── Gemini OCR ──────────────────────────────────────────────
+// ─── OCR (Claude Code CLI 経由) ──────────────────────────────
 
+/**
+ * HEIC や巨大画像は Claude の Read で扱いづらいので、sips で長辺 MAX_IMAGE_WIDTH の JPEG に正規化。
+ * PDF はそのまま渡す（Claude Read は PDF 対応）。
+ */
 function resizeImage(imagePath) {
   const ext = path.extname(imagePath).toLowerCase();
   if (ext === '.pdf') return imagePath;
+
+  const needsFormatConvert = ext === '.heic';
 
   try {
     const sizeOut = execSync(`sips -g pixelWidth "${imagePath}" 2>/dev/null`).toString();
     const widthMatch = sizeOut.match(/pixelWidth:\s*(\d+)/);
     const width = widthMatch ? parseInt(widthMatch[1]) : 0;
 
-    if (width <= MAX_IMAGE_WIDTH) return imagePath;
+    if (width > 0 && width <= MAX_IMAGE_WIDTH && !needsFormatConvert) return imagePath;
 
     const tmpPath = path.join(require('os').tmpdir(), `receipt_${Date.now()}.jpg`);
-    execSync(`sips --resampleWidth ${MAX_IMAGE_WIDTH} -s format jpeg "${imagePath}" --out "${tmpPath}" 2>/dev/null`);
+    const targetWidth = width > MAX_IMAGE_WIDTH ? MAX_IMAGE_WIDTH : (width || MAX_IMAGE_WIDTH);
+    execSync(`sips --resampleWidth ${targetWidth} -s format jpeg "${imagePath}" --out "${tmpPath}" 2>/dev/null`);
     const origSize = fs.statSync(imagePath).size;
     const newSize = fs.statSync(tmpPath).size;
-    console.log(`  📐 リサイズ: ${(origSize / 1024 / 1024).toFixed(1)}MB → ${(newSize / 1024).toFixed(0)}KB`);
+    const label = needsFormatConvert ? '変換' : 'リサイズ';
+    console.log(`  📐 ${label}: ${(origSize / 1024 / 1024).toFixed(1)}MB → ${(newSize / 1024).toFixed(0)}KB`);
     return tmpPath;
   } catch {
     return imagePath;
@@ -482,44 +487,23 @@ function resizeImage(imagePath) {
 
 async function ocrReceipt(imagePath) {
   const resizedPath = resizeImage(imagePath);
-  const ext = path.extname(resizedPath).toLowerCase();
-  const mimeMap = {
-    '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
-    '.heic': 'image/heic', '.webp': 'image/webp', '.pdf': 'application/pdf',
-  };
-  const mimeType = mimeMap[ext] || 'image/jpeg';
-  const imageData = fs.readFileSync(resizedPath);
-  const base64 = imageData.toString('base64');
+  const absPath = path.resolve(resizedPath);
+  const absDir = path.dirname(absPath);
+  const isPdf = path.extname(absPath).toLowerCase() === '.pdf';
 
-  const userText =
-    mimeType === 'application/pdf'
-      ? 'このPDFに含まれるレシート／領収書をすべて読み取り、system の指示どおり **JSONオブジェクト1つ**（receipts 配列）だけを返してください。'
-      : 'このレシート／領収書を読み取り、system の指示どおり **JSONオブジェクト1つ**（receipts 配列）だけを返してください。';
+  const userText = isPdf
+    ? `次のPDFに含まれるレシート／領収書をすべて Read tool で読み込み、system の指示どおり JSON（receipts 配列）だけを返してください。\n\nファイル: ${absPath}`
+    : `次のレシート／領収書画像を Read tool で読み込み、system の指示どおり JSON（receipts 配列）だけを返してください。\n\nファイル: ${absPath}`;
 
-  const response = await ai.models.generateContent({
-    model: RECEIPT_GEMINI_MODEL,
-    contents: [
-      {
-        role: 'user',
-        parts: [
-          { inlineData: { mimeType, data: base64 } },
-          { text: userText },
-        ],
-      },
-    ],
-    config: {
-      systemInstruction: buildReceiptOcrSystemPrompt(),
-      temperature: 0,
-      topP: 0.95,
-      topK: 40,
-      maxOutputTokens: 8192,
-      responseMimeType: 'application/json',
-    },
+  const { result } = await runClaude({
+    prompt: userText,
+    systemPrompt: buildReceiptOcrSystemPrompt(),
+    schema: RECEIPT_OCR_SCHEMA,
+    model: RECEIPT_OCR_MODEL,
+    allowReadDir: absDir,
   });
 
-  const text = response.text || '';
-  const parsed = parseGeminiReceiptJson(text);
-  return normalizeOcrEnvelope(parsed);
+  return normalizeOcrEnvelope(result);
 }
 
 // ─── 仕分けマッチング ───────────────────────────────────────

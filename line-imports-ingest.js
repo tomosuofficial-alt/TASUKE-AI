@@ -55,10 +55,6 @@ function main() {
     process.exit(0);
   }
 
-  if (!process.env.GEMINI_API_KEY) {
-    console.error('✗ GEMINI_API_KEY が .env にありません');
-    process.exit(1);
-  }
   if (!process.env.NOTION_LINE_INBOX_DB_ID) {
     console.error('✗ NOTION_LINE_INBOX_DB_ID が .env にありません（notion:create-line-inbox を先に）');
     process.exit(1);

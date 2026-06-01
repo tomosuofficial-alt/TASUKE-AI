@@ -13,7 +13,6 @@
     "import:csv": "node import-csv.js",
     "import:smaregi": "node import-smaregi.js",
     "content:calendar": "node content-calendar.js",
-    "content:prepare": "node content-prepare.js",
     "notion:resync-hooks": "node scripts/notion-resync-from-march22.js",
     "notion:fix-march22": "node scripts/notion-fix-march22-plus.js",
     "notion:sync-copypaste": "node scripts/notion-sync-copypaste.js",
@@ -46,7 +45,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google/genai": "^1.45.0",
     "@notionhq/client": "^2.3.0",
     "@slack/bolt": "^4.6.0",
     "csv-parse": "^6.1.0",
