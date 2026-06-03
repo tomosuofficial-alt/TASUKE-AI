@@ -66,4 +66,5 @@ jobs:
           path: |
             docs/pdca-abc/pdca-abc-*.md
             docs/pdca-abc/latest.md
+            docs/pdca-abc/products-*.csv
           if-no-files-found: warn
