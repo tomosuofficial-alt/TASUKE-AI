@@ -10,15 +10,16 @@
 ## クライアント
 
 
-| 名前            | レジ           |
-| ------------- | ------------ |
-| よいどころ千福       | スマレジ（API連携済） |
-| Niki★DINER    | エアレジ         |
-| Bistro Knocks | —            |
-| Mz cafe       | —            |
+| 名前            | レジ           | 関連リポ |
+| ------------- | ------------ | -------- |
+| よいどころ千福       | スマレジ（API連携済） | — |
+| Niki★DINER    | エアレジ         | — |
+| Bistro Knocks | —            | [tomosuofficial-alt/bistro-knocks-recipeal](https://github.com/tomosuofficial-alt/bistro-knocks-recipeal)（原価管理＋Web app） |
+| Mz cafe       | —            | — |
 
 
 ※ 詳細は案件管理DB参照。Notionの `Niki DINER` はブリーフ表記 `Niki★DINER` に対応。
+※ Bistro Knocks の原価管理（Excel＋Web app）は専用リポに集約済み。TASUKE-AI には保存しない。
 
 ## AI幹部（サブエージェント組織）
 
