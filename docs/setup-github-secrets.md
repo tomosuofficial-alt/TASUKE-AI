@@ -63,3 +63,18 @@ GitHub リポジトリ → **Settings** → **Secrets and variables** → **Acti
 
 - **Actions** タブから該当ワークフローを **Run workflow**（手動）で1回実行  
 - 失敗時はログを確認し、`FREEE_TOKEN_JSON` の更新や Notion / freee の権限を見直す
+
+---
+
+## 定例アクション追跡（`notion-create-meeting-actions-db.js`）
+
+| Secret 名 / 変数名 | 用途 |
+|--------------------|------|
+| `NOTION_TOKEN` | 上記と同じで可 |
+| `NOTION_MEETING_ACTIONS_DB_ID` | 作成後に `.env` へ自動追記される DB ID。GitHub Actions から参照する場合は Secret に登録 |
+
+### 初回セットアップ手順
+
+1. `.env` に `NOTION_TOKEN=<トークン>` を追記する（または `NOTION_TOKEN` をシェル変数にセット）
+2. `npm run notion:create-meeting-actions-db` を実行
+3. 出力された DB ID を GitHub Secrets に登録: `NOTION_MEETING_ACTIONS_DB_ID=<ID>`

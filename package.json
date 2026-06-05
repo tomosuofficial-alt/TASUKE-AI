@@ -39,6 +39,7 @@
     "line:ingest": "node line-imports-ingest.js",
     "notion:create-line-inbox": "node scripts/notion-create-line-inbox-db.js",
     "notion:create-tasks-db": "node scripts/notion-create-tasks-db.js",
+    "notion:create-meeting-actions-db": "node scripts/notion-create-meeting-actions-db.js",
     "verify": "node --check brief.js && node --check sales-report.js && node --check pdca-abc-report.js && node --check daily-command-morning.js && node --check scripts/morning-ci-pipeline.js && node --check unbilled-cases-alert.js && node --check freee-sales.js && node --check content-calendar.js && node --check receipt-import.js",
     "test": "npm run verify"
   },
