@@ -29,21 +29,62 @@
 
 ## 未決・ブロッカー（＝次にやること）
 
-1. **【最優先・関所】既存チェックシートアプリ（`senpuku-manual.netlify.app`）のソースの正確なパス未取得。**
-   - 大内さん回答＝「**ローカルの別フォルダにある**」。だが Air 上の自動探索では発見できず（`~/Developer`=TASUKE-AIのみ、`~/bistro-knocks-recipeal`は別クライアント、内容grepもヒット0）。
-   - → **Mac mini 本体にある可能性が高い。** Mac miniで再探索（`find ~ -maxdepth 6 -name package.json -not -path "*/node_modules/*"` で next を含むものを当たる）か、大内さんにパスを直接聞く。
-   - 稼働先が **Netlify** なのに spec §4 は **Vercel/Supabase** 記載。実コードを読んで **実構成を確定**すること（§10②）。
+1. **✅ 解消（2026-06-05 ツクル on Mac mini）** 既存チェックシートアプリのソース確定。
+   - パス: `/Volumes/Home_Mac_SSD/02_Development/02_Web_Apps/Yoidokoro_Senpuku/Check_Sheet/`
+   - 公開URL: `https://senpuku-manual.netlify.app/`（タイトル一致確認済）
+   - GitHub: `github.com/tomosuofficial-alt/senpuku-check-sheet`
+   - 実構成: **GAS + Google Sheets（6シート）+ Netlify静的HTML + Claude Haiku + LINE**。spec §4 想定（Next.js/Supabase/Vercel）と乖離。spec §4 にツクル追記ノートを追加済。
+   - データモデル提案 → [data-model-proposal-v1.md](data-model-proposal-v1.md)（レビュー待ち）
 2. **§10⑤ 内製オーナー**（第2期に運用移管する社内の人）未定。大内さん指名待ち（店長？ ちいさん？）。
-3. **NOTION_TOKEN がローカルに無い**（GitHub Secrets には登録済み）。Notion台帳の実作成は (a) token入手 かつ (b) **§6 の7分類スキーマに作り直してから**。
-   - ⚠️ 現在の `scripts/notion-create-meeting-actions-db.js` は **旧設計（つまずき5分類）**。実行前に spec §6 の改善カード（`cause_type` 7分類・`achievement`・`status`・`verification`・`to_standardize`・`related_doc` 等）に **列定義を改修**すること。
-4. **6月定例（2026-06-02）の議事メモ未受領** ＝「拾う」の起点。届けばマワリが台帳入力→6/16深掘り→6/30返すを代行。
+3. **✅ 解消（2026-06-05 ツクル on Mac mini）** Notion MCP 経由で NOTION_TOKEN なしで DB 作成完了。
+   - 作成済: https://app.notion.com/p/47e529d28f984b3ea263219b4f7544c0
+   - `scripts/notion-create-meeting-actions-db.js` も §5 新設計（7分類・19列）に改修済（構文OK）。横展開（Niki★DINER 等）の DB 作成時に NOTION_TOKEN 経由で再利用可能。
+4. **6月定例（2026-06-02）の議事メモ未受領** ＝ Section10 由来の新規アクション投入と、4月／5/1由来カード26件の状態更新の起点。
+   - DB は構築済み・5/1由来カードも投入済みなので、議事メモが来た瞬間に **「差分入力フロー」**（前節参照）が動く。
+   - 届かない間も 4月 ❌ 6件と 5/1 由来 15件は既に「未達 / 進行中」状態なので、6/16 詰めるは部分的に実行可能。
 
 ## 次の段取り（spec §0 準拠・一気に実装しない）
 
-1. アプリのソースパス確定 → **ツクルがコード & Supabaseスキーマを読む**
-2. **①データモデル提案**（spec §6 ＋ 実スキーマ突合）をレビュー用に提示 → 大内承認
-3. **②MVP画面/機能定義** → 承認
-4. **③実装** → デプロイ → Phase1 運用検証
+1. ✅ アプリのソースパス確定（2026-06-05 完了）→ ソースは GAS+Sheets だった（Supabase ではない）
+2. ✅ **①データモデル提案**（spec §6 ＋ 実シート突合）起草 → **[data-model-proposal-v1.md](data-model-proposal-v1.md)** で大内承認（2026-06-05）
+3. ✅ **②Phase1 実装**（2026-06-05 大内承認のもと一気通貫実行）
+   - Notion DB「定例アクション追跡」作成: https://app.notion.com/p/47e529d28f984b3ea263219b4f7544c0
+   - data source: `collection://86509c4e-5cf9-43f9-b520-aa006e60d308`
+   - 親ページ: TASUKE.AI company OS（`3249fe8c3a7f80269c41ce55e14d4d79`）
+   - 19列スキーマは [data-model-proposal-v1.md](data-model-proposal-v1.md) §5 完全準拠
+   - 改善カード 26件 初期投入完了（5/1議事録由来 + 6/2アジェンダ妥協不可3決定）
+4. **③Phase1 運用検証** → 6/16 詰める → 6/30 返す → 7月定例で評価
+
+### 初期投入 26件の内訳
+
+| 区分 | 件数 | 状態 | 由来 |
+|---|---|---|---|
+| 4月達成チェック ❌ | 6 | 未達 / 繰り越し | 4/2 議事録 (Section4) |
+| 4月達成チェック △ | 2 | 進行中（達成度3） | 4/2 議事録 (Section4) |
+| 5/1 で決めた新規タスク | 15 | 進行中（一部 完了） | 5/1 議事録 (Section10) |
+| 6/2 アジェンダ 妥協不可3決定 | 3 | 未着手 | 6/2 アジェンダ予定 (Section10) |
+
+### 6/2 議事メモ受領後の差分入力フロー（マワリ向け）
+
+議事メモを大内から受領したら、以下を順に実行:
+
+1. **既存カードの状態更新** — Section4 の 4月由来 8件を 6/2 結果で更新
+   - 達成 → `状態=完了`, `達成度=5 完了`, `検証結果` 記入
+   - 一部達成 → `状態=検証中` or `進行中`, `達成度=2-4`, `なぜできなかったか` 記入（②詰める対象）
+   - 未達 → `状態=未達` 継続、原因分類を 7分類から付与、`改善案` 記入
+2. **5/1 タスク15件の状態更新** — 同上
+3. **妥協不可3決定の更新** — 6/2 で決まった内容を `検証結果` に記入し `状態=完了`
+4. **6/2 で新規に決まったアクション追加** — Section10 由来のカードを追加投入
+   - 6月止血策1つ＋計測項目1つ
+   - 6月KPI3つ＋担当
+   - 離反常連3名アプローチ
+   - 2回目来店導線1アクション
+   - その他現場再発防止・採用・教育の確定事項
+
+### Notion DB の即時アクセス
+- Database: https://app.notion.com/p/47e529d28f984b3ea263219b4f7544c0
+- Notion MCP 経由なら data_source_id `86509c4e-5cf9-43f9-b520-aa006e60d308` で page 追加・更新可能
+- `scripts/notion-create-meeting-actions-db.js` は **再作成しないこと**（DB は既に存在）。同スクリプトは Niki★DINER 等の別クライアント DB 作成時に再利用
 
 ## Mac mini での再開手順
 

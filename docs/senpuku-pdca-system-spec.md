@@ -66,6 +66,8 @@ TOMOSU. は「運転手（代行）」ではなく「設計者」。システム
 - デザイン: 内部ツールゆえ視認性・操作速度を最優先。TOMOSU. ブランドトークン（アメリカンダイナー/ビンテージ/Ace Hotel 系）は軽いテーマ程度に留める。
 
 > **ツカサ確認メモ（2026-06-05）**: 稼働先は `senpuku-manual.netlify.app`（Netlify）を確認。本§のVercel/Supabase記載と実態がズレている可能性。実装着手前にソースコードを読んで実構成を確定すること（§10②）。
+>
+> **ツクル追記（2026-06-05・Mac mini）**: 実構成確定 — Frontend: 素のHTML/JS（`deploy/index.html` 1ファイル）、Backend: Google Apps Script（`Code.gs`）、DB: Google Spreadsheet（6シート）、Hosting: Netlify、AI: Claude Haiku 3.5（写真判定+温度計OCR）、通知: LINE。リポジトリ `github.com/tomosuofficial-alt/senpuku-check-sheet`、ローカル `/Volumes/Home_Mac_SSD/02_Development/02_Web_Apps/Yoidokoro_Senpuku/Check_Sheet/`。Phase2 のスタック判断（既存GAS拡張 vs Next.js+Supabase新規）は Phase1 検証後に決定する方針（大内 2026-06-05 確認）。詳細は [data-model-proposal-v1.md](data-model-proposal-v1.md) §1, §7 を参照。
 
 ---
 
