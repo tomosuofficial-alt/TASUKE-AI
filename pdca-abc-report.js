@@ -147,6 +147,37 @@ function aggregateLines(detailsList, by) {
   return [...map.values()].sort((a, b) => b.amount - a.amount);
 }
 
+// 商品別 × カテゴリ × 売上 × 数量 を CSV 文字列で返す（カテゴリ→商品コード昇順）
+function buildProductCsv(detailsList) {
+  const map = new Map();
+  for (const line of detailsList) {
+    if (String(line.transactionDetailDivision || '') !== '1') continue;
+    const qty = parseFloat(line.quantity || '0') || 0;
+    const amount = parseInt(line.unitDiscountedSum || '0', 10) || 0;
+    if (amount === 0 && qty === 0) continue;
+    const code = String(line.productCode || line.productId || '');
+    const key = code || line.productName || '';
+    const cur = map.get(key) || { code, name: line.productName || '（無名）', category: '', amount: 0, qty: 0 };
+    if (!cur.category && line.categoryName) cur.category = line.categoryName;
+    cur.amount += amount;
+    cur.qty += qty;
+    map.set(key, cur);
+  }
+  const rows = [...map.values()].sort((a, b) => {
+    const ca = a.category || '';
+    const cb = b.category || '';
+    if (ca !== cb) return ca < cb ? -1 : 1;
+    return String(a.code).localeCompare(String(b.code), 'ja', { numeric: true });
+  });
+  const esc = (s) => {
+    s = String(s);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const out = ['商品コード,商品名,カテゴリ,売上,数量'];
+  for (const r of rows) out.push([esc(r.code), esc(r.name), esc(r.category), r.amount, r.qty].join(','));
+  return out.join('\n');
+}
+
 function classifyAbc(rows, total, aPct, bPct) {
   let cumBefore = 0;
   return rows.map((r) => {
@@ -303,6 +334,12 @@ async function main() {
     fs.writeFileSync(latestPath, md, 'utf8');
     console.log(`\n✓ 保存: ${outPath}`);
     console.log(`✓ 直近: ${latestPath}（Cursor では docs/pdca-abc/latest.md を開く）\n`);
+
+    if (by === 'product') {
+      const csvPath = path.join(outDir, `products-${fileSlug}.csv`);
+      fs.writeFileSync(csvPath, buildProductCsv(allLines), 'utf8');
+      console.log(`✓ 商品CSV(カテゴリ別): ${csvPath}`);
+    }
   }
 
   console.log('完了');

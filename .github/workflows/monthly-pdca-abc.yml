@@ -6,6 +6,18 @@ on:
     # 毎月1日 02:00 UTC ≈ 同日 11:00 JST（前月締め後の確認向け）
     - cron: '0 2 1 * *'
   workflow_dispatch:
+    inputs:
+      period:
+        description: '対象期間 YYYY-MM（空欄なら前月）'
+        required: false
+        type: string
+        default: ''
+      granularity:
+        description: '集計軸'
+        required: false
+        type: choice
+        options: [by-product, by-category]
+        default: by-product
 
 concurrency:
   group: monthly-pdca-abc
@@ -28,24 +40,31 @@ jobs:
 
       - run: npm ci
 
-      - name: Previous month YYYY-MM
-        id: prev
+      - name: 期間と集計軸を解決
+        id: prm
         run: |
-          PREV=$(date -u -d "$(date -u +%Y-%m-01) -1 month" +%Y-%m)
-          echo "ym=$PREV" >> "$GITHUB_OUTPUT"
-          echo "Reporting for $PREV"
+          PERIOD="${{ github.event.inputs.period }}"
+          if [ -z "$PERIOD" ]; then
+            PERIOD=$(date -u -d "$(date -u +%Y-%m-01) -1 month" +%Y-%m)
+          fi
+          GRAN="${{ github.event.inputs.granularity }}"
+          if [ -z "$GRAN" ]; then GRAN="by-category"; fi
+          echo "period=$PERIOD" >> "$GITHUB_OUTPUT"
+          echo "gran=$GRAN" >> "$GITHUB_OUTPUT"
+          echo "Reporting $PERIOD ($GRAN)"
 
       - name: ABC report (Markdown only, no Slack)
         env:
           SMAREGI_CLIENT_ID: ${{ secrets.SMAREGI_CLIENT_ID }}
           SMAREGI_CLIENT_SECRET: ${{ secrets.SMAREGI_CLIENT_SECRET }}
           SMAREGI_CONTRACT_ID: ${{ secrets.SMAREGI_CONTRACT_ID }}
-        run: npm run pdca:abc -- ${{ steps.prev.outputs.ym }}
+        run: npm run pdca:abc -- ${{ steps.prm.outputs.period }} --${{ steps.prm.outputs.gran }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: pdca-abc-${{ steps.prev.outputs.ym }}
+          name: pdca-abc-${{ steps.prm.outputs.period }}-${{ steps.prm.outputs.gran }}
           path: |
             docs/pdca-abc/pdca-abc-*.md
             docs/pdca-abc/latest.md
+            docs/pdca-abc/products-*.csv
           if-no-files-found: warn
